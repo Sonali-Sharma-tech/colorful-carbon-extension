@@ -27,7 +27,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Sonali-Sharma-tech/vscode-custom-theme-setup"
+    "url": "https://github.com/Sonali-Sharma-tech/colorful-carbon-extension"
   },
   "main": "./out/extension.js",
   "activationEvents": [
