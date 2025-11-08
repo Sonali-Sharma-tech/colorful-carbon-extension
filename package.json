@@ -21,6 +21,7 @@
     "syntax highlighting",
     "custom theme"
   ],
+  "icon": "icon.png",
   "galleryBanner": {
     "color": "#0A0A0A",
     "theme": "dark"
