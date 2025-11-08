@@ -535,7 +535,7 @@ disabled = false
 [time]
 disabled = false
 format = ' at [$time](bold fg:241)'  # Gray color for time
-time_format = '%d %b %Y'  # Format: 8 Nov 2024
+time_format = '%d %b %Y %H:%M'  # Format: 8 Nov 2024 22:45
 utc_time_offset = 'local'
 `;
 }
