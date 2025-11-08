@@ -459,16 +459,6 @@ $hostname\\
 $directory\\
 $git_branch\\
 $git_status\\
-$nodejs\\
-$python\\
-$ruby\\
-$golang\\
-$php\\
-$rust\\
-$java\\
-$kotlin\\
-$swift\\
-$package\\
 $cmd_duration\\
 $time\\
 $line_break\\
@@ -506,12 +496,12 @@ conflicted = "[#conflicts](bold red) "
 ahead = "[↑\${count}](bold green) "
 behind = "[↓\${count}](bold yellow) "
 diverged = "[↑\${ahead_count}](bold green)[↓\${behind_count}](bold yellow) "
-untracked = "[#changes](bold yellow) "
+untracked = ""
 stashed = ""
-modified = "[#changes](bold yellow) "
-staged = "[#changes](bold yellow) "
-renamed = "[#changes](bold yellow) "
-deleted = "[#changes](bold yellow) "
+modified = ""
+staged = ""
+renamed = ""
+deleted = ""
 up_to_date = "[#synced](bold green) "
 
 [nodejs]
@@ -534,7 +524,7 @@ disabled = false
 
 [time]
 disabled = false
-format = ' at [$time](bold fg:241)'  # Gray color for time
+format = ' [$time](bold fg:241)'  # Gray color for time at the end
 time_format = '%d %b %Y %H:%M'  # Format: 8 Nov 2024 22:45
 utc_time_offset = 'local'
 `;
