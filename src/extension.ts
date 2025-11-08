@@ -468,7 +468,6 @@ $rust\\
 $java\\
 $kotlin\\
 $swift\\
-$docker_context\\
 $package\\
 $cmd_duration\\
 $time\\
@@ -503,16 +502,17 @@ format = 'on [$symbol$branch](bold fg:205) '
 
 [git_status]
 format = '([$all_status$ahead_behind]($style))'
-conflicted = "[⚔️ ](bold red)"  # Red for conflicts
-ahead = "[⇡\${count}](bold green)"
-behind = "[⇣\${count}](bold yellow)"
-diverged = "[⇕](bold orange)[⇡\${ahead_count}](green)[⇣\${behind_count}](yellow)"
-untracked = "[?](bold purple)"  # Purple for untracked files
-stashed = "[📦](bold yellow)"
-modified = "[!](bold yellow)"  # Yellow for modified files
-staged = '[+](bold green)'  # Green for staged files
-renamed = "[➜](bold cyan)"
-deleted = "[✗](bold red)"  # Red for deleted files
+conflicted = "[#conflicts](bold red) "
+ahead = "[↑\${count}](bold green) "
+behind = "[↓\${count}](bold yellow) "
+diverged = "[↑\${ahead_count}](bold green)[↓\${behind_count}](bold yellow) "
+untracked = "[#changes](bold yellow) "
+stashed = ""
+modified = "[#changes](bold yellow) "
+staged = "[#changes](bold yellow) "
+renamed = "[#changes](bold yellow) "
+deleted = "[#changes](bold yellow) "
+up_to_date = "[#synced](bold green) "
 
 [nodejs]
 symbol = " "
