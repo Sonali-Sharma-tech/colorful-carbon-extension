@@ -51,7 +51,11 @@ export async function activate(context: vscode.ExtensionContext) {
         await showSetupStatus();
     });
 
-    context.subscriptions.push(applyCompleteSetup, installDependencies, applyTerminalConfig, showStatus);
+    const removeConfig = vscode.commands.registerCommand('colorful-carbon.removeTerminalConfig', async () => {
+        await removeTerminalConfiguration();
+    });
+
+    context.subscriptions.push(applyCompleteSetup, installDependencies, applyTerminalConfig, showStatus, removeConfig);
 
     // Create status bar item
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -276,11 +280,23 @@ async function applyTerminalConfiguration(): Promise<void> {
         fs.mkdirSync(configDir, { recursive: true });
     }
 
-    // Write .zshrc
-    const zshrcContent = getZshrcContent();
-    fs.writeFileSync(path.join(homeDir, '.zshrc'), zshrcContent);
+    // Handle .zshrc safely - append our config instead of overwriting
+    const zshrcPath = path.join(homeDir, '.zshrc');
+    const existingZshrc = fs.existsSync(zshrcPath) ? fs.readFileSync(zshrcPath, 'utf8') : '';
 
-    // Write starship.toml
+    // Check if our config is already present
+    if (!existingZshrc.includes('# Colorful Carbon Configuration')) {
+        const zshrcAdditions = `
+
+# Colorful Carbon Configuration - START
+# Added by Colorful Carbon VS Code Extension
+${getZshrcContent()}
+# Colorful Carbon Configuration - END
+`;
+        fs.appendFileSync(zshrcPath, zshrcAdditions);
+    }
+
+    // Write starship.toml - this one is safe to overwrite as it's specific to our tool
     const starshipContent = getStarshipContent();
     fs.writeFileSync(path.join(homeDir, '.config', 'starship.toml'), starshipContent);
 }
@@ -372,15 +388,7 @@ async function showSetupStatus(): Promise<void> {
 }
 
 function getZshrcContent(): string {
-    return `# Path configurations
-export PATH="$HOME/.local/bin:$PATH"
-
-# NVM (Node Version Manager) - if you use it
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \\. "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && \\. "$NVM_DIR/bash_completion"
-
-# Homebrew zsh plugins - tries multiple common locations
+    return `# Homebrew zsh plugins - tries multiple common locations
 if [[ -f /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
     source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 elif [[ -f /usr/local/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
@@ -530,6 +538,45 @@ format = ' at [$time](bold fg:241)'  # Gray color for time
 time_format = '%d %b %Y'  # Format: 8 Nov 2024
 utc_time_offset = 'local'
 `;
+}
+
+async function removeTerminalConfiguration(): Promise<void> {
+    const confirm = await vscode.window.showWarningMessage(
+        'This will remove Colorful Carbon terminal configurations. Your original settings will be preserved. Continue?',
+        'Yes, Remove',
+        'Cancel'
+    );
+
+    if (confirm !== 'Yes, Remove') {
+        return;
+    }
+
+    const homeDir = os.homedir();
+
+    // Remove our section from .zshrc
+    const zshrcPath = path.join(homeDir, '.zshrc');
+    if (fs.existsSync(zshrcPath)) {
+        const content = fs.readFileSync(zshrcPath, 'utf8');
+        // Remove our configuration block
+        const updatedContent = content.replace(
+            /\n*# Colorful Carbon Configuration - START[\s\S]*?# Colorful Carbon Configuration - END\n*/g,
+            ''
+        );
+        fs.writeFileSync(zshrcPath, updatedContent);
+    }
+
+    // Remove starship.toml (only if it's ours)
+    const starshipPath = path.join(homeDir, '.config', 'starship.toml');
+    if (fs.existsSync(starshipPath)) {
+        const content = fs.readFileSync(starshipPath, 'utf8');
+        if (content.includes('Custom Color-Coded Starship Theme')) {
+            fs.unlinkSync(starshipPath);
+        }
+    }
+
+    vscode.window.showInformationMessage(
+        'Terminal configurations removed. Restart your terminal to see changes.'
+    );
 }
 
 export function deactivate() {}
