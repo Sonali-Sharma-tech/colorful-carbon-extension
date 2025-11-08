@@ -73,9 +73,49 @@ brew install starship zsh-autosuggestions zsh-syntax-highlighting fzf
 - `colorfulCarbon.autoApplyTerminalTheme`: Automatically apply terminal theme on activation (default: true)
 - `colorfulCarbon.showWelcomeMessage`: Show welcome message with setup instructions (default: true)
 
+## 🗑️ Uninstalling
+
+Want to go back to your original setup? No problem!
+
+### Remove Extension Only
+1. Uninstall the extension from VS Code
+2. Your terminal configurations remain unchanged
+
+### Remove Terminal Configurations
+
+**Option 1: Restore from Backup**
+```bash
+# Find your backups (created automatically)
+ls ~/.zshrc.backup*
+ls ~/.config/starship.toml.backup*
+
+# Restore originals
+cp ~/.zshrc.backup-[timestamp] ~/.zshrc
+cp ~/.config/starship.toml.backup-[timestamp] ~/.config/starship.toml
+```
+
+**Option 2: Remove Packages Only**
+```bash
+# Uninstall terminal enhancements (keeps zsh intact)
+brew uninstall starship zsh-autosuggestions zsh-syntax-highlighting fzf
+
+# Your zsh shell remains untouched!
+```
+
+**Option 3: Manual Cleanup**
+- Remove the custom git function from `~/.zshrc`
+- Delete `~/.config/starship.toml`
+- Keep all your other zsh configurations
+
+### What's Safe
+- ✅ Your zsh shell - never modified
+- ✅ Your existing aliases and functions
+- ✅ Your PATH configurations
+- ✅ Your command history
+
 ## 🤝 Contributing
 
-Found a bug or have a suggestion? Please open an issue on [GitHub](https://github.com/Sonali-Sharma-tech/vscode-custom-theme-setup).
+Found a bug or have a suggestion? Please open an issue on [GitHub](https://github.com/Sonali-Sharma-tech/colorful-carbon-extension).
 
 ## 📝 License
 
