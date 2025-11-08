@@ -3,7 +3,7 @@
   "displayName": "Colorful Carbon - Complete VS Code Makeover",
   "description": "Transform your VS Code with a beautiful dark theme and matching terminal colors. Includes automated terminal setup with syntax highlighting!",
   "version": "1.0.0",
-  "publisher": "sonali-sharma-tech",
+  "publisher": "Sonali-Sharma",
   "engines": {
     "vscode": "^1.74.0"
   },
