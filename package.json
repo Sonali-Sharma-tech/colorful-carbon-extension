@@ -1,0 +1,94 @@
+{
+  "name": "colorful-carbon",
+  "displayName": "Colorful Carbon - Complete VS Code Makeover",
+  "description": "Transform your VS Code with a beautiful dark theme and matching terminal colors. Includes automated terminal setup with syntax highlighting!",
+  "version": "1.0.0",
+  "publisher": "sonali-sharma-tech",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Themes",
+    "Other"
+  ],
+  "keywords": [
+    "theme",
+    "dark theme",
+    "colorful",
+    "terminal",
+    "vscode makeover",
+    "carbon",
+    "syntax highlighting",
+    "custom theme"
+  ],
+  "galleryBanner": {
+    "color": "#0A0A0A",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sonali-Sharma-tech/vscode-custom-theme-setup"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "label": "Colorful Carbon",
+        "uiTheme": "vs-dark",
+        "path": "./themes/colorful-carbon.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "colorful-carbon.applyCompleteSetup",
+        "title": "Colorful Carbon: Apply Complete Makeover"
+      },
+      {
+        "command": "colorful-carbon.installTerminalDependencies",
+        "title": "Colorful Carbon: Install Terminal Dependencies"
+      },
+      {
+        "command": "colorful-carbon.applyTerminalConfig",
+        "title": "Colorful Carbon: Apply Terminal Configuration"
+      },
+      {
+        "command": "colorful-carbon.showSetupStatus",
+        "title": "Colorful Carbon: Show Setup Status"
+      }
+    ],
+    "configuration": {
+      "title": "Colorful Carbon",
+      "properties": {
+        "colorfulCarbon.autoApplyTerminalTheme": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically apply terminal theme on activation"
+        },
+        "colorfulCarbon.showWelcomeMessage": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show welcome message with setup instructions"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "16.x",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "eslint": "^8.28.0",
+    "typescript": "^4.9.3"
+  }
+}
