@@ -40,6 +40,16 @@
         "label": "Colorful Carbon",
         "uiTheme": "vs-dark",
         "path": "./themes/colorful-carbon.json"
+      },
+      {
+        "label": "Colorful Carbon Dark Night",
+        "uiTheme": "vs-dark",
+        "path": "./themes/colorful-carbon-dark-night.json"
+      },
+      {
+        "label": "Colorful Carbon Starry Night",
+        "uiTheme": "vs-dark",
+        "path": "./themes/colorful-carbon-starry-night.json"
       }
     ],
     "commands": [
@@ -62,6 +72,18 @@
       {
         "command": "colorful-carbon.removeTerminalConfig",
         "title": "Colorful Carbon: Remove Terminal Configuration"
+      },
+      {
+        "command": "colorful-carbon.switchToDefault",
+        "title": "Colorful Carbon: Switch to Default Theme"
+      },
+      {
+        "command": "colorful-carbon.switchToDarkNight",
+        "title": "Colorful Carbon: Switch to Dark Night Theme"
+      },
+      {
+        "command": "colorful-carbon.testExtension",
+        "title": "Colorful Carbon: Test Extension (Debug)"
       }
     ],
     "configuration": {

@@ -3,12 +3,24 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
+import { switchToTheme } from './theme-switcher';
 
 export async function activate(context: vscode.ExtensionContext) {
     // Auto-apply terminal theme on activation
     const config = vscode.workspace.getConfiguration('colorfulCarbon');
+
     if (config.get('autoApplyTerminalTheme')) {
         applyTerminalSettings();
+    }
+
+    // Set Dark Night as default theme for development
+    const currentTheme = vscode.workspace.getConfiguration().get<string>('workbench.colorTheme');
+    if (!currentTheme || !currentTheme.includes('Colorful Carbon')) {
+        // Set Dark Night theme on first activation
+        await vscode.workspace.getConfiguration().update('workbench.colorTheme', 'Colorful Carbon Dark Night', vscode.ConfigurationTarget.Global);
+        await updateStarshipConfig('Colorful Carbon Dark Night');
+    } else if (currentTheme === 'Colorful Carbon' || currentTheme === 'Colorful Carbon Dark Night') {
+        await updateStarshipConfig(currentTheme);
     }
 
     // Check if this is first activation
@@ -55,7 +67,32 @@ export async function activate(context: vscode.ExtensionContext) {
         await removeTerminalConfiguration();
     });
 
-    context.subscriptions.push(applyCompleteSetup, installDependencies, applyTerminalConfig, showStatus, removeConfig);
+    // Add theme switching commands
+    const switchToDefault = vscode.commands.registerCommand('colorful-carbon.switchToDefault', async () => {
+        switchToTheme('default');
+    });
+
+    const switchToDarkNight = vscode.commands.registerCommand('colorful-carbon.switchToDarkNight', async () => {
+        switchToTheme('dark-night');
+    });
+
+    // Debug test command
+    const testExtension = vscode.commands.registerCommand('colorful-carbon.testExtension', async () => {
+        const config = vscode.workspace.getConfiguration('colorfulCarbon');
+        const currentTheme = vscode.workspace.getConfiguration().get('workbench.colorTheme');
+        const missingDeps = await checkMissingDependencies();
+
+        const message = `Colorful Carbon Test Results:
+- Extension Active: ✓
+- Current Theme: ${currentTheme}
+- Auto Apply Terminal: ${config.get('autoApplyTerminalTheme')}
+- Show Welcome: ${config.get('showWelcomeMessage')}
+- Missing Dependencies: ${missingDeps.length === 0 ? 'None' : missingDeps.join(', ')}`;
+
+        vscode.window.showInformationMessage(message.replace(/\n/g, ' | '));
+    });
+
+    context.subscriptions.push(applyCompleteSetup, installDependencies, applyTerminalConfig, showStatus, removeConfig, switchToDefault, switchToDarkNight, testExtension);
 
     // Create status bar item
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -63,9 +100,48 @@ export async function activate(context: vscode.ExtensionContext) {
     statusBarItem.show();
     context.subscriptions.push(statusBarItem);
 
+    // Track last applied theme to avoid duplicate updates
+    let lastAppliedTheme: string | undefined;
+
+    // Listen for theme changes - automatically update starship config and reload terminals
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveColorTheme(async () => {
+            // Small delay to ensure config is fully written
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const themeName = vscode.workspace.getConfiguration().get<string>('workbench.colorTheme');
+
+            if (themeName === 'Colorful Carbon' || themeName === 'Colorful Carbon Dark Night') {
+                // Only update if theme actually changed
+                if (lastAppliedTheme !== themeName) {
+                    const themeType = themeName === 'Colorful Carbon Dark Night' ? 'Dark Night' : 'Default';
+                    lastAppliedTheme = themeName;
+
+                    // Update starship config based on theme
+                    await updateStarshipConfig(themeName);
+
+                    // Automatically reload all existing terminals
+                    if (vscode.window.terminals.length > 0) {
+                        vscode.window.terminals.forEach(terminal => {
+                            terminal.sendText('clear && exec zsh', true);
+                        });
+                    }
+
+                    // Show success message
+                    vscode.window.showInformationMessage(
+                        `🎨 Switched to ${themeType} theme! All terminals reloaded.`
+                    );
+                }
+            } else {
+                // Clear last applied theme when switching away from Colorful Carbon themes
+                lastAppliedTheme = undefined;
+            }
+        })
+    );
+
     // Update status bar periodically
-    const interval = setInterval(() => updateStatusBar(statusBarItem), 30000); // Every 30 seconds
-    context.subscriptions.push({ dispose: () => clearInterval(interval) });
+    const statusInterval = setInterval(() => updateStatusBar(statusBarItem), 30000); // Every 30 seconds
+    context.subscriptions.push({ dispose: () => clearInterval(statusInterval) });
 }
 
 async function updateStatusBar(statusBarItem: vscode.StatusBarItem) {
@@ -296,9 +372,15 @@ ${getZshrcContent()}
         fs.appendFileSync(zshrcPath, zshrcAdditions);
     }
 
-    // Write starship.toml - this one is safe to overwrite as it's specific to our tool
-    const starshipContent = getStarshipContent();
+    // Write starship.toml based on current theme
+    const currentTheme = vscode.workspace.getConfiguration().get<string>('workbench.colorTheme');
+    const isDarkNight = currentTheme === 'Colorful Carbon Dark Night';
+    const starshipContent = isDarkNight ? getDarkNightStarshipContent() : getStarshipContent();
     fs.writeFileSync(path.join(homeDir, '.config', 'starship.toml'), starshipContent);
+
+    // Write theme marker file
+    const themeMarkerPath = path.join(homeDir, '.colorful-carbon-theme');
+    fs.writeFileSync(themeMarkerPath, isDarkNight ? 'dark-night' : 'default');
 }
 
 async function setupGitColors(): Promise<void> {
@@ -429,6 +511,11 @@ fi
 # Initialize Starship prompt
 eval "$(starship init zsh)"
 
+# Reload starship helper function for theme changes
+colorful_carbon_reload() {
+    exec zsh
+}
+
 # Force color support for git
 export TERM=xterm-256color
 
@@ -436,18 +523,54 @@ export TERM=xterm-256color
 export GIT_PAGER='less -R'
 export LESS='-R'
 
-# Custom git wrapper to colorize specific lines
+# Git wrapper to colorize branch names based on theme
 git() {
-    if [[ "$1" == "status" ]]; then
-        command git status "$@" | sed -E \\
-            -e "s/'origin\\/([^']+)'/$(printf '\\033[1;33m')'origin\\/\\1'$(printf '\\033[0m')/g" \\
-            -e "s/no changes added to commit.*/$(printf '\\033[35m')&$(printf '\\033[0m')/" \\
-            -e "s/nothing to commit.*/$(printf '\\033[35m')&$(printf '\\033[0m')/"
-    else
-        command git "$@"
+    # Re-read theme file on EVERY execution for dynamic updates
+    local CURRENT_CC_THEME="default"
+    if [[ -f ~/.colorful-carbon-theme ]]; then
+        CURRENT_CC_THEME=$(cat ~/.colorful-carbon-theme)
     fi
+
+    # Call the real git command and capture output
+    local output=$(command git "$@" 2>&1)
+    local exit_code=$?
+
+    # Only colorize if it's a command that shows branches
+    if [[ "$1" == "status" || "$1" == "st" || "$1" == "checkout" || "$1" == "branch" || "$1" == "log" || "$1" == "merge" || "$1" == "rebase" || "$1" == "cherry-pick" || "$1" == "switch" ]]; then
+        # Apply theme-based coloring to branch names
+        if [[ "$CURRENT_CC_THEME" == "dark-night" ]]; then
+            # Yellow for dark-night theme
+            echo "$output" | sed -E "s/(On branch |Switched to branch |Your branch is [^']*'|Merge branch '|Rebase branch ')([^'[:space:]]+)/\\1$(printf '\\033[33;1m')\\2$(printf '\\033[0m')/g"
+        else
+            # Magenta for default theme
+            echo "$output" | sed -E "s/(On branch |Switched to branch |Your branch is [^']*'|Merge branch '|Rebase branch ')([^'[:space:]]+)/\\1$(printf '\\033[35;1m')\\2$(printf '\\033[0m')/g"
+        fi
+    else
+        echo "$output"
+    fi
+
+    return $exit_code
 }
+
+# Simple git aliases (using the wrapper)
+alias gst='git status'
+alias glog='git log --oneline -10'
 `;
+}
+
+async function updateStarshipConfig(themeName: string): Promise<void> {
+    const homeDir = os.homedir();
+    const starshipPath = path.join(homeDir, '.config', 'starship.toml');
+    const themeMarkerPath = path.join(homeDir, '.colorful-carbon-theme');
+
+    // Determine theme type and update marker file
+    const themeType = themeName === 'Colorful Carbon Dark Night' ? 'dark-night' : 'default';
+    fs.writeFileSync(themeMarkerPath, themeType);
+
+    // Write appropriate starship config
+    const isDarkNight = themeName === 'Colorful Carbon Dark Night';
+    const starshipContent = isDarkNight ? getDarkNightStarshipContent() : getStarshipContent();
+    fs.writeFileSync(starshipPath, starshipContent);
 }
 
 function getStarshipContent(): string {
@@ -486,23 +609,23 @@ read_only = " 🔒"
 read_only_style = "bold red"
 
 [git_branch]
-symbol = " "
-style = "bold fg:205"  # Pink for branch name
-format = 'on [$symbol$branch](bold fg:205) '
+symbol = "🎋 "
+style = "bold fg:205"
+format = 'on [$symbol$branch](bold fg:205)[(->$remote_branch)](bold fg:150) '
 
 [git_status]
 format = '([$all_status$ahead_behind]($style))'
 conflicted = "[#conflicts](bold red) "
-ahead = "[↑\${count}](bold green) "
-behind = "[↓\${count}](bold yellow) "
-diverged = "[↑\${ahead_count}](bold green)[↓\${behind_count}](bold yellow) "
+ahead = "[\u2191\${count}](bold green) "
+behind = "[\u2193\${count}](bold yellow) "
+diverged = "[\u2191\${ahead_count}](bold green)[\u2193\${behind_count}](bold yellow) "
 untracked = ""
 stashed = ""
 modified = ""
 staged = ""
 renamed = ""
 deleted = ""
-up_to_date = "[#synced](bold green) "
+up_to_date = "[#synced](bold fg:172) "
 
 [nodejs]
 symbol = " "
@@ -525,6 +648,86 @@ disabled = false
 [time]
 disabled = false
 format = ' [$time](bold fg:241)'  # Gray color for time at the end
+time_format = '%d %b %Y %H:%M'  # Format: 8 Nov 2024 22:45
+utc_time_offset = 'local'
+`;
+}
+
+function getDarkNightStarshipContent(): string {
+    return `# Custom Color-Coded Starship Theme - Dark Night
+
+format = """
+$username\\
+$hostname\\
+$directory\\
+$git_branch\\
+$git_status\\
+$cmd_duration\\
+$time\\
+$line_break\\
+$character"""
+
+[username]
+style_user = "bold fg:#6BCB77"  # Fresh Green
+style_root = "bold red"
+format = '[$user]($style)'
+disabled = false
+show_always = true
+
+[hostname]
+ssh_only = false
+format = '[@](white)[$hostname](bold fg:#6BCB77) '
+disabled = false
+
+[directory]
+style = "bold fg:#4ECDC4"  # Turquoise for project/directory name
+format = "[$path]($style) "
+truncation_length = 3
+truncation_symbol = "…/"
+home_symbol = "~"
+read_only = " 🔒"
+read_only_style = "bold red"
+
+[git_branch]
+symbol = "🎋 "
+style = "bold fg:#FFD93D"
+format = 'on [$symbol$branch](bold fg:#FFD93D)[(->$remote_branch)](bold fg:#C792EA) '
+
+[git_status]
+format = '([$all_status$ahead_behind]($style))'
+conflicted = "[#conflicts](bold fg:#FF6B6B) "
+ahead = "[\u2191\${count}](bold fg:#6BCB77) "
+behind = "[\u2193\${count}](bold fg:#FF8B13) "
+diverged = "[\u2191\${ahead_count}](bold fg:#6BCB77)[\u2193\${behind_count}](bold fg:#FF8B13) "
+untracked = ""
+stashed = ""
+modified = ""
+staged = ""
+renamed = ""
+deleted = ""
+up_to_date = "[#synced](bold fg:172) "
+
+[nodejs]
+symbol = " "
+style = "bold fg:#6BCB77"
+format = 'via [$symbol($version)]($style) '
+
+[python]
+symbol = "🐍 "
+style = "bold fg:#FFD93D"
+format = 'via [$symbol($version)(\\($virtualenv\\))]($style) '
+
+[character]
+success_symbol = '[❯](bold fg:#4D96FF)'  # Bright Blue for successful command
+error_symbol = '[✖](bold fg:#FF6B6B)'  # Coral Red for failed command
+vimcmd_symbol = '[❮](bold fg:#4D96FF)'
+
+[line_break]
+disabled = false
+
+[time]
+disabled = false
+format = ' [$time](bold fg:#9CA3AF)'  # Soft Gray color for time at the end
 time_format = '%d %b %Y %H:%M'  # Format: 8 Nov 2024 22:45
 utc_time_offset = 'local'
 `;
