@@ -155,7 +155,6 @@ function setupThemeChangeListener(context: vscode.ExtensionContext): void {
             if (isColorfulCarbonTheme(themeName)) {
                 // Only update if theme actually changed
                 if (lastAppliedTheme !== themeName) {
-                    const themeType = themeName === THEME_NAMES.DARK_NIGHT ? 'Dark Night' : 'Default';
                     lastAppliedTheme = themeName;
 
                     // Update starship config based on theme
@@ -166,11 +165,6 @@ function setupThemeChangeListener(context: vscode.ExtensionContext): void {
 
                     // Automatically reload all existing terminals
                     reloadAllTerminals();
-
-                    // Show success message
-                    vscode.window.showInformationMessage(
-                        `🎨 Switched to ${themeType} theme! All terminals reloaded.`
-                    );
                 }
             } else {
                 // Clear last applied theme when switching away from Colorful Carbon themes
@@ -689,6 +683,68 @@ if [[ -z "$CC_GIT_CHECK_DONE" ]]; then
     check_git_upstream
 fi
 
+# Colorful Carbon: Smart Git Auto-Fetch (opt-out: COLORFUL_CARBON_DISABLE_AUTOFETCH=1)
+if [[ -z "$COLORFUL_CARBON_DISABLE_AUTOFETCH" ]]; then
+  # Use namespaced function name to avoid collisions
+  function __colorful_carbon_fetch() {
+    # Safety: Only run in git repos
+    git rev-parse --git-dir >/dev/null 2>&1 || return
+
+    local repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+    [[ -z "$repo_root" ]] && return
+
+    local cache_dir="$HOME/.git-fetch-cache"
+
+    # Portable hashing with fallback
+    local hash
+    if command -v shasum >/dev/null 2>&1; then
+      hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+    elif command -v sha256sum >/dev/null 2>&1; then
+      hash=$(echo -n "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
+    else
+      # Fallback: Simple path mangling (no hash needed, path is already unique)
+      hash=$(echo -n "$repo_root" | sed 's/\\//_/g')
+    fi
+
+    local cache_file="$cache_dir/$hash"
+    local lock_file="$cache_file.lock"
+
+    # Safety: Handle mkdir failure gracefully
+    mkdir -p "$cache_dir" 2>/dev/null || return
+
+    # Cleanup old cache files (>30 days) - non-critical, ignore errors
+    find "$cache_dir" -type f -not -name "*.lock" -mtime +30 -delete 2>/dev/null || true
+
+    # Read last fetch time
+    local last_fetch=0
+    [[ -f "$cache_file" ]] && last_fetch=$(cat "$cache_file" 2>/dev/null || echo 0)
+
+    local now=$(date +%s)
+    local age=$((now - last_fetch))
+
+    # Fetch if: (1) >5min old, (2) not locked, (3) not already fetching
+    if [[ $age -gt 300 ]] && [[ ! -f "$lock_file" ]]; then
+      touch "$lock_file" 2>/dev/null || return
+
+      # Background fetch (non-blocking, disowned)
+      (
+        if git fetch --quiet --all --prune --tags 2>/dev/null; then
+          echo $now > "$cache_file"
+        fi
+        rm -f "$lock_file"
+      ) &!
+    fi
+  }
+
+  # Safety: Only add to chpwd_functions if not already present
+  if [[ ! " \${chpwd_functions[@]} " =~ " __colorful_carbon_fetch " ]]; then
+    chpwd_functions+=(__colorful_carbon_fetch)
+  fi
+
+  # Run on shell startup
+  __colorful_carbon_fetch
+fi
+
 # Initialize Starship prompt
 eval "$(starship init zsh)"
 
@@ -715,6 +771,30 @@ git() {
     # Call the real git command and capture output
     local output=$(command git "$@" 2>&1)
     local exit_code=$?
+
+    # Update fetch cache on successful pull/fetch (for smart auto-fetch)
+    if [[ $exit_code -eq 0 ]] && [[ -z "$COLORFUL_CARBON_DISABLE_AUTOFETCH" ]]; then
+      case "$1" in
+        pull|fetch)
+          if git rev-parse --git-dir >/dev/null 2>&1; then
+            local repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+            if [[ -n "$repo_root" ]]; then
+              local cache_dir="$HOME/.git-fetch-cache"
+              local hash
+              if command -v shasum >/dev/null 2>&1; then
+                hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+              elif command -v sha256sum >/dev/null 2>&1; then
+                hash=$(echo -n "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
+              else
+                hash=$(echo -n "$repo_root" | sed 's/\\//_/g')
+              fi
+              local cache_file="$cache_dir/$hash"
+              mkdir -p "$cache_dir" 2>/dev/null && echo $(date +%s) > "$cache_file" 2>/dev/null
+            fi
+          fi
+          ;;
+      esac
+    fi
 
     # Only colorize if it's a command that shows branches
     if [[ "$1" == "status" || "$1" == "st" || "$1" == "checkout" || "$1" == "branch" || "$1" == "log" || "$1" == "merge" || "$1" == "rebase" || "$1" == "cherry-pick" || "$1" == "switch" ]]; then
@@ -841,7 +921,28 @@ if [ "$up_ahead" -gt 0 ] || [ "$up_behind" -gt 0 ]; then
   [ "$up_behind" -gt 0 ] && printf "%s" "⬇ $up_behind"
   printf "%s" " "
 else
-  printf "%s" "(#synced) "
+  # Only claim "synced" if fetch cache is fresh (<5min)
+  repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+  if [ -n "$repo_root" ]; then
+    hash=""
+    if command -v shasum >/dev/null 2>&1; then
+      hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+    elif command -v sha256sum >/dev/null 2>&1; then
+      hash=$(echo -n "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
+    else
+      hash=$(echo -n "$repo_root" | sed 's/\\//_/g')
+    fi
+
+    cache_file="$HOME/.git-fetch-cache/$hash"
+    last_fetch=0
+    [ -f "$cache_file" ] && last_fetch=$(cat "$cache_file" 2>/dev/null || echo 0)
+    now=$(date +%s)
+    age=$((now - last_fetch))
+
+    if [ $age -lt 300 ]; then
+      printf "%s" "(#synced) "
+    fi
+  fi
 fi
 
 # Check if origin/<current> exists and is different from upstream
@@ -979,7 +1080,28 @@ if [ "$up_ahead" -gt 0 ] || [ "$up_behind" -gt 0 ]; then
   [ "$up_behind" -gt 0 ] && printf "%s" "⬇ $up_behind"
   printf "%s" " "
 else
-  printf "%s" "(#synced) "
+  # Only claim "synced" if fetch cache is fresh (<5min)
+  repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+  if [ -n "$repo_root" ]; then
+    hash=""
+    if command -v shasum >/dev/null 2>&1; then
+      hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+    elif command -v sha256sum >/dev/null 2>&1; then
+      hash=$(echo -n "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
+    else
+      hash=$(echo -n "$repo_root" | sed 's/\\//_/g')
+    fi
+
+    cache_file="$HOME/.git-fetch-cache/$hash"
+    last_fetch=0
+    [ -f "$cache_file" ] && last_fetch=$(cat "$cache_file" 2>/dev/null || echo 0)
+    now=$(date +%s)
+    age=$((now - last_fetch))
+
+    if [ $age -lt 300 ]; then
+      printf "%s" "(#synced) "
+    fi
+  fi
 fi
 
 # Check if origin/<current> exists and is different from upstream
