@@ -144,7 +144,6 @@ function setupThemeChangeListener(context: vscode.ExtensionContext): void {
         vscode.window.onDidChangeActiveColorTheme(async () => {
             // Skip if manual theme switch is in progress to prevent double execution
             if (isManualSwitch()) {
-                console.log('[Theme Listener] Skipping - manual switch in progress');
                 return;
             }
 
@@ -232,6 +231,9 @@ async function updateStatusBar(statusBarItem: vscode.StatusBarItem): Promise<voi
  * Extension activation - initializes theme, git tracking, and UI components
  */
 export async function activate(context: vscode.ExtensionContext) {
+    // Setup theme change listener FIRST (most critical for theme switching)
+    setupThemeChangeListener(context);
+
     const config = getColorfulCarbonConfig();
 
     // Initialize terminal theme
@@ -245,9 +247,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Setup status bar
     setupStatusBar(context);
-
-    // Setup theme change listener
-    setupThemeChangeListener(context);
 }
 
 /**
@@ -838,8 +837,8 @@ up_behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0)
 # Show upstream with its status
 printf "%s" "-> $upstream "
 if [ "$up_ahead" -gt 0 ] || [ "$up_behind" -gt 0 ]; then
-  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆$up_ahead"
-  [ "$up_behind" -gt 0 ] && printf "%s" "⬇$up_behind"
+  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆ $up_ahead"
+  [ "$up_behind" -gt 0 ] && printf "%s" "⬇ $up_behind"
   printf "%s" " "
 else
   printf "%s" "(#synced) "
@@ -860,8 +859,8 @@ if [ -n "$current" ]; then
       # Always show when there's a mismatch
       printf "%s" "| $remote_branch "
       if [ "$ahead" -gt 0 ] || [ "$behind" -gt 0 ]; then
-        [ "$ahead" -gt 0 ] && printf "%s" "⬆$ahead"
-        [ "$behind" -gt 0 ] && printf "%s" "⬇$behind"
+        [ "$ahead" -gt 0 ] && printf "%s" "⬆ $ahead"
+        [ "$behind" -gt 0 ] && printf "%s" "⬇ $behind"
       else
         printf "%s" "(#synced)"
       fi
@@ -946,18 +945,18 @@ style = "bold fg:#FFD93D"
 format = 'on [$symbol$branch](bold fg:#FFD93D) '
 
 [git_status]
-format = '([$all_status$ahead_behind]($style)) '
+format = '([$all_status]($style)) '
 conflicted = "[⚠️ conflicts](bold fg:#FF6B6B) "
-ahead = "[⬆\${count}](bold fg:#6BCB77) "
-behind = "[⬇\${count}](bold fg:#FF8B13) "
-diverged = "[⇅ ⬆\${ahead_count}⬇\${behind_count}](bold fg:#FF8B13) "
+ahead = ""
+behind = ""
+diverged = ""
 untracked = ""
 stashed = ""
 modified = ""
 staged = ""
 renamed = ""
 deleted = ""
-up_to_date = "[(#synced)](bold fg:#6BCB77) "
+up_to_date = ""
 
 # Custom module to show git upstream branch with mismatch detection
 [custom.git_upstream]
@@ -976,8 +975,8 @@ up_behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0)
 # Show upstream with its status
 printf "%s" "-> $upstream "
 if [ "$up_ahead" -gt 0 ] || [ "$up_behind" -gt 0 ]; then
-  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆$up_ahead"
-  [ "$up_behind" -gt 0 ] && printf "%s" "⬇$up_behind"
+  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆ $up_ahead"
+  [ "$up_behind" -gt 0 ] && printf "%s" "⬇ $up_behind"
   printf "%s" " "
 else
   printf "%s" "(#synced) "
@@ -998,8 +997,8 @@ if [ -n "$current" ]; then
       # Always show when there's a mismatch
       printf "%s" "| $remote_branch "
       if [ "$ahead" -gt 0 ] || [ "$behind" -gt 0 ]; then
-        [ "$ahead" -gt 0 ] && printf "%s" "⬆$ahead"
-        [ "$behind" -gt 0 ] && printf "%s" "⬇$behind"
+        [ "$ahead" -gt 0 ] && printf "%s" "⬆ $ahead"
+        [ "$behind" -gt 0 ] && printf "%s" "⬇ $behind"
       else
         printf "%s" "(#synced)"
       fi

@@ -2,23 +2,6 @@
   "name": "Colorful Carbon Dark Night",
   "type": "dark",
   "semanticHighlighting": true,
-  /*
-   * COLOR SCHEME GUIDE:
-   * #0A0A0A - Pure black (main background)
-   * #12171e - Dark blue-gray (panels, widgets, Claude chat)
-   * #1e1e1e - Dark charcoal (borders, inactive elements)
-   * #28333a - Dark gray-blue (active selections)
-   * #808080 - Medium gray (secondary elements)
-   * #9CA3AF - Light medium gray (text, inactive elements)
-   * #bdc4c7 - Light gray (Claude response text)
-   * #c5c5c5 - Light gray (list text)
-   * #E0E0E0 - Light gray (primary text)
-   * #FFFFFF - White (active text, highlights)
-   * #a3c679 - Green (tab borders, git modified)
-   * #FFD93D - Yellow (highlights, warnings)
-   * #4D96FF - Blue (active selections, keywords)
-   * #FF6B6B - Red (errors, deleted)
-   */
   "colors": {
     "focusBorder": "#80808000",
 
@@ -313,7 +296,7 @@
       "name": "Variable",
       "scope": "variable, variable.parameter, support.variable, variable.language",
       "settings": {
-        "foreground": "#db5d7c"
+        "foreground": "#f4f5f7"
       }
     },
     {
