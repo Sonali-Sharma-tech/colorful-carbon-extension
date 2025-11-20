@@ -144,7 +144,6 @@ function setupThemeChangeListener(context: vscode.ExtensionContext): void {
         vscode.window.onDidChangeActiveColorTheme(async () => {
             // Skip if manual theme switch is in progress to prevent double execution
             if (isManualSwitch()) {
-                console.log('[Theme Listener] Skipping - manual switch in progress');
                 return;
             }
 
@@ -156,7 +155,6 @@ function setupThemeChangeListener(context: vscode.ExtensionContext): void {
             if (isColorfulCarbonTheme(themeName)) {
                 // Only update if theme actually changed
                 if (lastAppliedTheme !== themeName) {
-                    const themeType = themeName === THEME_NAMES.DARK_NIGHT ? 'Dark Night' : 'Default';
                     lastAppliedTheme = themeName;
 
                     // Update starship config based on theme
@@ -167,11 +165,6 @@ function setupThemeChangeListener(context: vscode.ExtensionContext): void {
 
                     // Automatically reload all existing terminals
                     reloadAllTerminals();
-
-                    // Show success message
-                    vscode.window.showInformationMessage(
-                        `🎨 Switched to ${themeType} theme! All terminals reloaded.`
-                    );
                 }
             } else {
                 // Clear last applied theme when switching away from Colorful Carbon themes
@@ -229,10 +222,140 @@ async function updateStatusBar(statusBarItem: vscode.StatusBarItem): Promise<voi
 }
 
 /**
+ * Install smart fetch feature to user's .zshrc
+ */
+async function installSmartFetch(): Promise<void> {
+    const zshrcPath = getHomeFilePath(FILE_PATHS.ZSHRC);
+    const content = fs.readFileSync(zshrcPath, 'utf8');
+
+    if (content.includes('__colorful_carbon_fetch')) {
+        return; // Already installed
+    }
+
+    const smartFetchBlock = `# Colorful Carbon: Smart Git Auto-Fetch (opt-out: COLORFUL_CARBON_DISABLE_AUTOFETCH=1)
+if [[ -z "$COLORFUL_CARBON_DISABLE_AUTOFETCH" ]]; then
+  function __colorful_carbon_fetch() {
+    # LAYER 1: Quick exit if not in git repo (~5ms)
+    git rev-parse --git-dir >/dev/null 2>&1 || return
+
+    # LAYER 2: Get repo root and hash (~10ms)
+    local repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+    [[ -z "$repo_root" ]] && return
+
+    local cache_dir="$HOME/.git-fetch-cache"
+    local hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+    [[ -z "$hash" ]] && return
+
+    local cache_file="$cache_dir/$hash"
+
+    # LAYER 3: Quick cache age check (~5ms) - Exit early if fresh
+    local last_fetch=0
+    [[ -f "$cache_file" ]] && last_fetch=$(cat "$cache_file" 2>/dev/null || echo 0)
+    local now=$(date +%s)
+    local age=$((now - last_fetch))
+
+    [[ $age -lt 900 ]] && return  # Cache fresh, exit early
+
+    # LAYER 4: Only now do expensive operations
+    local lock_file="$cache_file.lock"
+    [[ -f "$lock_file" ]] && return  # Already fetching
+
+    mkdir -p "$cache_dir" 2>/dev/null || return
+    find "$cache_dir" -type f -not -name "*.lock" -mtime +30 -delete 2>/dev/null || true
+
+    touch "$lock_file" 2>/dev/null || return
+    (
+      if git fetch --quiet --all --prune --tags 2>/dev/null; then
+        echo $now > "$cache_file"
+      fi
+      rm -f "$lock_file"
+    ) &!
+  }
+
+  if [[ ! " \${chpwd_functions[@]} " =~ " __colorful_carbon_fetch " ]]; then
+    chpwd_functions+=(__colorful_carbon_fetch)
+  fi
+  if [[ ! " \${preexec_functions[@]} " =~ " __colorful_carbon_fetch " ]]; then
+    preexec_functions+=(__colorful_carbon_fetch)
+  fi
+  __colorful_carbon_fetch
+fi
+
+`;
+
+    const updatedContent = content.replace(
+        /# Initialize Starship prompt/,
+        `${smartFetchBlock}# Initialize Starship prompt`
+    );
+
+    fs.writeFileSync(zshrcPath, updatedContent);
+}
+
+/**
+ * Ensure existing users get latest terminal configuration updates
+ * Auto-upgrades if autoApplyTerminalTheme is enabled, shows notification otherwise
+ */
+async function ensureLatestTerminalConfig(context: vscode.ExtensionContext): Promise<void> {
+    const zshrcPath = getHomeFilePath(FILE_PATHS.ZSHRC);
+
+    if (!fs.existsSync(zshrcPath)) {
+        return; // User hasn't set up terminal yet
+    }
+
+    const content = fs.readFileSync(zshrcPath, 'utf8');
+
+    // Only proceed if user has already opted-in
+    if (!content.includes('# Colorful Carbon Configuration - START')) {
+        return; // User never ran setup - respect their choice
+    }
+
+    const config = getColorfulCarbonConfig();
+    const autoApply = config.get('autoApplyTerminalTheme', true);
+
+    // Check if smart fetch is missing (new feature in v1.1)
+    if (!content.includes('__colorful_carbon_fetch')) {
+        if (autoApply) {
+            // User has auto-apply enabled - upgrade silently
+            await installSmartFetch();
+        } else {
+            // User prefers manual control - show notification
+            const hasPrompted = context.globalState.get('smartFetchUpgradePrompted', false);
+
+            if (!hasPrompted) {
+                const choice = await vscode.window.showInformationMessage(
+                    '🎯 New: Smart Git Fetch - Keeps terminal git status accurate. Enable?',
+                    'Enable',
+                    'Not Now'
+                );
+
+                await context.globalState.update('smartFetchUpgradePrompted', true);
+
+                if (choice === 'Enable') {
+                    await installSmartFetch();
+                    vscode.window.showInformationMessage('✅ Smart Git Fetch enabled! Open a new terminal to see it in action.');
+                }
+            }
+        }
+    }
+
+    // Always update starship config to latest (idempotent)
+    const currentTheme = getCurrentThemeName();
+    if (currentTheme && isColorfulCarbonTheme(currentTheme)) {
+        await updateStarshipConfig(currentTheme);
+    }
+}
+
+/**
  * Extension activation - initializes theme, git tracking, and UI components
  */
 export async function activate(context: vscode.ExtensionContext) {
+    // Setup theme change listener FIRST (most critical for theme switching)
+    setupThemeChangeListener(context);
+
     const config = getColorfulCarbonConfig();
+
+    // Ensure existing users get latest terminal config updates
+    await ensureLatestTerminalConfig(context);
 
     // Initialize terminal theme
     await initializeTheme(config);
@@ -245,9 +368,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Setup status bar
     setupStatusBar(context);
-
-    // Setup theme change listener
-    setupThemeChangeListener(context);
 }
 
 /**
@@ -460,6 +580,9 @@ async function applyTerminalConfiguration(): Promise<void> {
 
     // Append zshrc configuration if not already present
     appendZshrcConfig();
+
+    // Ensure smart fetch is installed (even if user clicked "Not Now" before)
+    await installSmartFetch();
 
     // Write starship config and theme marker based on current theme
     writeStarshipConfig();
@@ -709,6 +832,55 @@ if [[ -z "$CC_GIT_CHECK_DONE" ]]; then
     check_git_upstream
 fi
 
+# Colorful Carbon: Smart Git Auto-Fetch (opt-out: COLORFUL_CARBON_DISABLE_AUTOFETCH=1)
+if [[ -z "$COLORFUL_CARBON_DISABLE_AUTOFETCH" ]]; then
+  function __colorful_carbon_fetch() {
+    # LAYER 1: Quick exit if not in git repo (~5ms)
+    git rev-parse --git-dir >/dev/null 2>&1 || return
+
+    # LAYER 2: Get repo root and hash (~10ms)
+    local repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+    [[ -z "$repo_root" ]] && return
+
+    local cache_dir="$HOME/.git-fetch-cache"
+    local hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+    [[ -z "$hash" ]] && return
+
+    local cache_file="$cache_dir/$hash"
+
+    # LAYER 3: Quick cache age check (~5ms) - Exit early if fresh
+    local last_fetch=0
+    [[ -f "$cache_file" ]] && last_fetch=$(cat "$cache_file" 2>/dev/null || echo 0)
+    local now=$(date +%s)
+    local age=$((now - last_fetch))
+
+    [[ $age -lt 900 ]] && return  # Cache fresh, exit early
+
+    # LAYER 4: Only now do expensive operations
+    local lock_file="$cache_file.lock"
+    [[ -f "$lock_file" ]] && return  # Already fetching
+
+    mkdir -p "$cache_dir" 2>/dev/null || return
+    find "$cache_dir" -type f -not -name "*.lock" -mtime +30 -delete 2>/dev/null || true
+
+    touch "$lock_file" 2>/dev/null || return
+    (
+      if git fetch --quiet --all --prune --tags 2>/dev/null; then
+        echo $now > "$cache_file"
+      fi
+      rm -f "$lock_file"
+    ) &!
+  }
+
+  if [[ ! " \${chpwd_functions[@]} " =~ " __colorful_carbon_fetch " ]]; then
+    chpwd_functions+=(__colorful_carbon_fetch)
+  fi
+  if [[ ! " \${preexec_functions[@]} " =~ " __colorful_carbon_fetch " ]]; then
+    preexec_functions+=(__colorful_carbon_fetch)
+  fi
+  __colorful_carbon_fetch
+fi
+
 # Initialize Starship prompt
 eval "$(starship init zsh)"
 
@@ -735,6 +907,30 @@ git() {
     # Call the real git command and capture output
     local output=$(command git "$@" 2>&1)
     local exit_code=$?
+
+    # Update fetch cache on successful pull/fetch (for smart auto-fetch)
+    if [[ $exit_code -eq 0 ]] && [[ -z "$COLORFUL_CARBON_DISABLE_AUTOFETCH" ]]; then
+      case "$1" in
+        pull|fetch)
+          if git rev-parse --git-dir >/dev/null 2>&1; then
+            local repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+            if [[ -n "$repo_root" ]]; then
+              local cache_dir="$HOME/.git-fetch-cache"
+              local hash
+              if command -v shasum >/dev/null 2>&1; then
+                hash=$(printf "%s" "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+              elif command -v sha256sum >/dev/null 2>&1; then
+                hash=$(printf "%s" "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
+              else
+                hash=$(printf "%s" "$repo_root" | sed 's/\\//_/g')
+              fi
+              local cache_file="$cache_dir/$hash"
+              mkdir -p "$cache_dir" 2>/dev/null && echo $(date +%s) > "$cache_file" 2>/dev/null
+            fi
+          fi
+          ;;
+      esac
+    fi
 
     # Only colorize if it's a command that shows branches
     if [[ "$1" == "status" || "$1" == "st" || "$1" == "checkout" || "$1" == "branch" || "$1" == "log" || "$1" == "merge" || "$1" == "rebase" || "$1" == "cherry-pick" || "$1" == "switch" ]]; then
@@ -860,11 +1056,32 @@ up_behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0)
 # Show upstream with its status
 printf "%s" "-> $upstream "
 if [ "$up_ahead" -gt 0 ] || [ "$up_behind" -gt 0 ]; then
-  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆$up_ahead"
-  [ "$up_behind" -gt 0 ] && printf "%s" "⬇$up_behind"
+  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆ $up_ahead"
+  [ "$up_behind" -gt 0 ] && printf "%s" "⬇ $up_behind"
   printf "%s" " "
 else
-  printf "%s" "(#synced) "
+  # Only claim "synced" if fetch cache is fresh (<5min)
+  repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+  if [ -n "$repo_root" ]; then
+    hash=""
+    if command -v shasum >/dev/null 2>&1; then
+      hash=$(printf "%s" "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+    elif command -v sha256sum >/dev/null 2>&1; then
+      hash=$(printf "%s" "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
+    else
+      hash=$(printf "%s" "$repo_root" | sed 's/\\//_/g')
+    fi
+
+    cache_file="$HOME/.git-fetch-cache/$hash"
+    last_fetch=0
+    [ -f "$cache_file" ] && last_fetch=$(cat "$cache_file" 2>/dev/null || echo 0)
+    now=$(date +%s)
+    age=$((now - last_fetch))
+
+    if [ $age -lt 900 ]; then
+      printf "%s" "(#synced) "
+    fi
+  fi
 fi
 
 # Check if origin/<current> exists and is different from upstream
@@ -882,8 +1099,8 @@ if [ -n "$current" ]; then
       # Always show when there's a mismatch
       printf "%s" "| $remote_branch "
       if [ "$ahead" -gt 0 ] || [ "$behind" -gt 0 ]; then
-        [ "$ahead" -gt 0 ] && printf "%s" "⬆$ahead"
-        [ "$behind" -gt 0 ] && printf "%s" "⬇$behind"
+        [ "$ahead" -gt 0 ] && printf "%s" "⬆ $ahead"
+        [ "$behind" -gt 0 ] && printf "%s" "⬇ $behind"
       else
         printf "%s" "(#synced)"
       fi
@@ -968,18 +1185,18 @@ style = "bold fg:#FFD93D"
 format = 'on [$symbol$branch](bold fg:#FFD93D) '
 
 [git_status]
-format = '([$all_status$ahead_behind]($style)) '
+format = '([$all_status]($style)) '
 conflicted = "[⚠️ conflicts](bold fg:#FF6B6B) "
-ahead = "[⬆\${count}](bold fg:#6BCB77) "
-behind = "[⬇\${count}](bold fg:#FF8B13) "
-diverged = "[⇅ ⬆\${ahead_count}⬇\${behind_count}](bold fg:#FF8B13) "
+ahead = ""
+behind = ""
+diverged = ""
 untracked = ""
 stashed = ""
 modified = ""
 staged = ""
 renamed = ""
 deleted = ""
-up_to_date = "[(#synced)](bold fg:#6BCB77) "
+up_to_date = ""
 
 # Custom module to show git upstream branch with mismatch detection
 [custom.git_upstream]
@@ -998,11 +1215,32 @@ up_behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0)
 # Show upstream with its status
 printf "%s" "-> $upstream "
 if [ "$up_ahead" -gt 0 ] || [ "$up_behind" -gt 0 ]; then
-  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆$up_ahead"
-  [ "$up_behind" -gt 0 ] && printf "%s" "⬇$up_behind"
+  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆ $up_ahead"
+  [ "$up_behind" -gt 0 ] && printf "%s" "⬇ $up_behind"
   printf "%s" " "
 else
-  printf "%s" "(#synced) "
+  # Only claim "synced" if fetch cache is fresh (<5min)
+  repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+  if [ -n "$repo_root" ]; then
+    hash=""
+    if command -v shasum >/dev/null 2>&1; then
+      hash=$(printf "%s" "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+    elif command -v sha256sum >/dev/null 2>&1; then
+      hash=$(printf "%s" "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
+    else
+      hash=$(printf "%s" "$repo_root" | sed 's/\\//_/g')
+    fi
+
+    cache_file="$HOME/.git-fetch-cache/$hash"
+    last_fetch=0
+    [ -f "$cache_file" ] && last_fetch=$(cat "$cache_file" 2>/dev/null || echo 0)
+    now=$(date +%s)
+    age=$((now - last_fetch))
+
+    if [ $age -lt 900 ]; then
+      printf "%s" "(#synced) "
+    fi
+  fi
 fi
 
 # Check if origin/<current> exists and is different from upstream
@@ -1020,8 +1258,8 @@ if [ -n "$current" ]; then
       # Always show when there's a mismatch
       printf "%s" "| $remote_branch "
       if [ "$ahead" -gt 0 ] || [ "$behind" -gt 0 ]; then
-        [ "$ahead" -gt 0 ] && printf "%s" "⬆$ahead"
-        [ "$behind" -gt 0 ] && printf "%s" "⬇$behind"
+        [ "$ahead" -gt 0 ] && printf "%s" "⬆ $ahead"
+        [ "$behind" -gt 0 ] && printf "%s" "⬇ $behind"
       else
         printf "%s" "(#synced)"
       fi
