@@ -916,11 +916,11 @@ git() {
               local cache_dir="$HOME/.git-fetch-cache"
               local hash
               if command -v shasum >/dev/null 2>&1; then
-                hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+                hash=$(printf "%s" "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
               elif command -v sha256sum >/dev/null 2>&1; then
-                hash=$(echo -n "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
+                hash=$(printf "%s" "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
               else
-                hash=$(echo -n "$repo_root" | sed 's/\\//_/g')
+                hash=$(printf "%s" "$repo_root" | sed 's/\\//_/g')
               fi
               local cache_file="$cache_dir/$hash"
               mkdir -p "$cache_dir" 2>/dev/null && echo $(date +%s) > "$cache_file" 2>/dev/null
@@ -1063,11 +1063,11 @@ else
   if [ -n "$repo_root" ]; then
     hash=""
     if command -v shasum >/dev/null 2>&1; then
-      hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+      hash=$(printf "%s" "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
     elif command -v sha256sum >/dev/null 2>&1; then
-      hash=$(echo -n "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
+      hash=$(printf "%s" "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
     else
-      hash=$(echo -n "$repo_root" | sed 's/\\//_/g')
+      hash=$(printf "%s" "$repo_root" | sed 's/\\//_/g')
     fi
 
     cache_file="$HOME/.git-fetch-cache/$hash"
@@ -1222,11 +1222,11 @@ else
   if [ -n "$repo_root" ]; then
     hash=""
     if command -v shasum >/dev/null 2>&1; then
-      hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+      hash=$(printf "%s" "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
     elif command -v sha256sum >/dev/null 2>&1; then
-      hash=$(echo -n "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
+      hash=$(printf "%s" "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
     else
-      hash=$(echo -n "$repo_root" | sed 's/\\//_/g')
+      hash=$(printf "%s" "$repo_root" | sed 's/\\//_/g')
     fi
 
     cache_file="$HOME/.git-fetch-cache/$hash"
