@@ -10,3 +10,10 @@ vsc-extension-quickstart.md
 **/*.ts
 node_modules/**
 out/test/**
+
+# Development documentation (not needed in published extension)
+docs/**
+
+# Keep user-facing documentation
+!README.md
+!CHANGELOG.md
