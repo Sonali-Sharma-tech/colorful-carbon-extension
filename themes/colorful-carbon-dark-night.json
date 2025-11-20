@@ -2,10 +2,27 @@
   "name": "Colorful Carbon Dark Night",
   "type": "dark",
   "semanticHighlighting": true,
+  /*
+   * COLOR SCHEME GUIDE:
+   * #0A0A0A - Pure black (main background)
+   * #12171e - Dark blue-gray (panels, widgets, Claude chat)
+   * #1e1e1e - Dark charcoal (borders, inactive elements)
+   * #28333a - Dark gray-blue (active selections)
+   * #808080 - Medium gray (secondary elements)
+   * #9CA3AF - Light medium gray (text, inactive elements)
+   * #bdc4c7 - Light gray (Claude response text)
+   * #c5c5c5 - Light gray (list text)
+   * #E0E0E0 - Light gray (primary text)
+   * #FFFFFF - White (active text, highlights)
+   * #a3c679 - Green (tab borders, git modified)
+   * #FFD93D - Yellow (highlights, warnings)
+   * #4D96FF - Blue (active selections, keywords)
+   * #FF6B6B - Red (errors, deleted)
+   */
   "colors": {
     "focusBorder": "#80808000",
 
-    // Editor colors
+    // === EDITOR ===
     "editor.background": "#0A0A0A",
     "editor.foreground": "#E0E0E0",
     "editor.selectionBackground": "#47474780",
@@ -14,7 +31,7 @@
     "editorCursor.foreground": "#808080",
     "editorCursor.background": "#808080",
 
-    // Activity Bar
+    // === ACTIVITY BAR ===
     "activityBar.background": "#0A0A0A",
     "activityBar.foreground": "#E0E0E0",
     "activityBar.border": "#12171e",
@@ -22,22 +39,21 @@
     "activityBarBadge.background": "#12171e",
     "activityBarBadge.foreground": "#E0E0E0",
 
-    // Sidebar
+    // === SIDEBAR ===
     "sideBar.background": "#0A0A0A",
     "sideBar.foreground": "#9CA3AF",
-    "sideBar.border": "#1e1e1e",
-    "sideBarTitle.foreground": "#12171e",
+    "sideBar.border": "#12171e",
+    "sideBarTitle.foreground": "#E0E0E0",
     "sideBarSectionHeader.background": "#12171e",
     "sideBarSectionHeader.foreground": "#E0E0E0",
     "sideBarSectionHeader.border": "#12171e",
 
-    // List/Tree
-
+    // === LISTS & TREES ===
     "list.activeSelectionBackground": "#28333a",
-    "list.activeSelectionForeground": "#4D96FFe6",
+    "list.activeSelectionForeground": "#a3c679",
     "list.inactiveSelectionBackground": "#12171e",
     "list.inactiveSelectionForeground": "#c5c5c5",
-    "list.hoverBackground": "#12171e",
+    "list.hoverBackground": "#28333a",
     "list.hoverForeground": "#FFFFFF",
     "list.highlightForeground": "#FFD93D",
     "list.focusBackground": "#12171e",
@@ -50,7 +66,7 @@
     "list.filterMatchBackground": "#FFD93D40",
     "list.filterMatchBorder": "#FFD93D",
 
-    // Tabs
+    // === TABS ===
     "tab.activeBackground": "#0A0A0A",
     "tab.activeForeground": "#FFFFFF",
     "tab.activeBorder": "#a3c679",
@@ -58,14 +74,16 @@
     "tab.inactiveForeground": "#9CA3AF",
     "tab.border": "#0A0A0A",
 
-    // Status Bar
+    // === STATUS BAR ===
     "statusBar.background": "#0A0A0A",
     "statusBar.foreground": "#9CA3AF",
-    "statusBar.border": "#1e1e1e",
-    "statusBar.debuggingBackground": "#1e1e1e",
+    "statusBar.border": "#12171e",
+    "statusBar.debuggingBackground": "#12171e",
     "statusBar.debuggingForeground": "#E0E0E0",
+    "statusBar.noFolderBackground": "#0A0A0A",
+    "statusBar.noFolderForeground": "#9CA3AF",
 
-    // Terminal colors (Dark Night theme)
+    // === TERMINAL ===
     "terminal.background": "#0A0A0A",
     "terminal.foreground": "#8f93a2",
     "terminalCursor.background": "#FFD93D",
@@ -87,8 +105,8 @@
     "terminal.ansiBrightCyan": "#4ECDC4",
     "terminal.ansiBrightWhite": "#FFFFFF",
 
-    // Buttons
-    "button.background": "#12171e",
+    // === BUTTONS ===
+    "button.background": "#28333a",
     "button.foreground": "#E0E0E0",
     "button.hoverBackground": "#2b2e33",
     "button.secondaryBackground": "#12171e",
@@ -96,112 +114,116 @@
     "button.secondaryHoverBackground": "#2b2e33",
     "button.border": "#2a2a2a",
 
-    // Input
+    // === INPUT FIELDS ===
     "input.background": "#12171e",
-    "input.foreground": "#E0E0E0",
-    "input.border": "#1e1e1e",
+    "input.foreground": "#c5c5c5",
+    "input.border": "#28333a",
 
-    // Scrollbar
+    // === SCROLLBAR ===
     "scrollbarSlider.background": "#EEFFFF20",
     "scrollbarSlider.hoverBackground": "#EEFFFF10",
     "scrollbarSlider.activeBackground": "#808080",
 
-    // Editor widgets
+    // === EDITOR WIDGETS ===
     "editorWidget.background": "#12171e",
-    "editorWidget.border": "#12171e",
-    "editorWidget.resizeBorder": "#12171e",
+    "editorWidget.foreground": "#cfcfc8",
+    "editorWidget.border": "#28333a",
+    "editorWidget.resizeBorder": "#28333a",
 
-    // Notifications
+    // === NOTIFICATIONS ===
     "notifications.background": "#0A0A0A",
     "notifications.foreground": "#E0E0E0",
     "notificationLink.foreground": "#808080",
 
-    // Git decorations
+    // === GIT DECORATIONS ===
     "gitDecoration.addedResourceForeground": "#808080e6",
-    "gitDecoration.modifiedResourceForeground": "#a3c679",
+    "gitDecoration.modifiedResourceForeground": "#4D96FFe6",
     "gitDecoration.deletedResourceForeground": "#FF6B6Be6",
     "gitDecoration.untrackedResourceForeground": "#808080e6",
     "gitDecoration.conflictingResourceForeground": "#FFD93De6",
     "gitDecoration.ignoredResourceForeground": "#9CA3AF80",
 
-    // Diff editor
-    "diffEditor.insertedTextBackground": "#80808012",
+    // === DIFF EDITOR ===
+    "diffEditor.insertedTextBackground": "#28333a",
     "diffEditor.removedTextBackground": "#FF6B6B14",
 
-    // Editor groups
+    // === EDITOR GROUPS ===
     "editorGroup.border": "#12171e",
     "editorGroupHeader.tabsBackground": "#0A0A0A",
 
-    // Panel
+    // === PANEL ===
     "panel.background": "#0A0A0A",
     "panel.border": "#12171e",
     "panelTitle.activeForeground": "#E0E0E0",
     "panelTitle.inactiveForeground": "#808080",
-    "panelTitle.activeBorder": "#1e1e1e",
+    "panelTitle.activeBorder": "#28333a",
     "panelTitle.inactiveBackground": "#0A0A0A",
 
-    // Breadcrumb
+    // === BREADCRUMB ===
     "breadcrumb.background": "#0A0A0A",
     "breadcrumb.foreground": "#9CA3AF",
     "breadcrumb.activeSelectionForeground": "#E0E0E0",
 
-    // Title bar
+    // === TITLE BAR ===
     "titleBar.activeBackground": "#0A0A0A",
     "titleBar.activeForeground": "#E0E0E0",
-    "titleBar.inactiveBackground": "#0A0A0A",
-    "titleBar.inactiveForeground": "#9CA3AF",
+    "titleBar.inactiveBackground": "#12171e",
+    "titleBar.inactiveForeground": "#28333a",
 
-    // Menu
+    // === MENU ===
     "menu.background": "#0A0A0A",
     "menu.foreground": "#E0E0E0",
-    "menu.selectionBackground": "#1e1e1e",
+    "menu.selectionBackground": "#12171e",
     "menu.selectionForeground": "#E0E0E0",
-    "menubar.selectionBackground": "#1e1e1e",
+    "menubar.selectionBackground": "#12171e",
     "menubar.selectionForeground": "#E0E0E0",
 
-    // Settings
+    // === SETTINGS ===
     "settings.modifiedItemIndicator": "#1e1e1e",
 
-    // Command center
+    // === COMMAND CENTER ===
     "commandCenter.foreground": "#E0E0E099",
     "commandCenter.activeBorder": "#1e1e1e",
 
+    // === EXTENSION BUTTONS ===
     "extensionButton.background": "#526e6414",
     "extensionButton.foreground": "#526e64",
     "extensionButton.hoverBackground": "#526e6433",
     "extensionButton.separator": "#526e6433",
 
-    // Extension button
+    // === TEXT LINKS ===
     "textLink.foreground": "#E0E0E0",
     "textLink.activeForeground": "#FFFFFF",
 
-    // Progress bar
-    "progressBar.background": "#1e1e1e",
+    // === PROGRESS BAR ===
+    "progressBar.background": "#12171e",
 
-    // Editor find
+    // === EDITOR FIND ===
     "editor.findMatchBackground": "#ffffff26",
     "editor.findMatchHighlightBackground": "#ffffff26",
-    "editor.findMatchBorder": "#12171e",
+    "editor.findMatchBorder": "#1e1e1e",
 
-    // Peek view
-    "peekView.border": "#1e1e1e",
+    // === PEEK VIEW ===
+    "peekView.border": "#12171e",
     "peekViewEditor.background": "#12171e",
     "peekViewTitle.background": "#12171e",
     "peekViewResult.background": "#12171e",
 
-    // Claude Chat Integration
+    // === CLAUDE CHAT INTEGRATION ===
     "chat.requestBackground": "#12171e",
     "chat.requestBorder": "#12171e",
-    "chat.requestForeground": "#c5c5c5",
+    "chat.requestForeground": "#bdc4c7",
     "interactive.responseBackground": "#12171e",
     "interactive.responseBorder": "#1e1e1e",
-    "interactive.responseForeground": "#c5c5c5",
-    "editorSuggestWidget.background": "#1e1e1e",
+    "interactive.responseForeground": "#cfcfc8",
+    "editorSuggestWidget.background": "#12171e",
+    "editorSuggestWidget.foreground": "#cfcfc8",
     "editorSuggestWidget.border": "#1e1e1e",
-    "editorHoverWidget.background": "#1e1e1e",
+    "editorHoverWidget.background": "#12171e",
+    "editorHoverWidget.foreground": "#cfcfc8",
     "editorHoverWidget.border": "#1e1e1e",
 
-    // Quick input (Command Palette)
+    // === QUICK INPUT ===
     "quickInput.background": "#0A0A0A",
     "quickInput.foreground": "#E0E0E0",
     "quickInputTitle.background": "#0A0A0A",
@@ -209,49 +231,49 @@
     "quickInputList.focusForeground": "#FFFFFF",
     "quickInputList.focusIconForeground": "#FFFFFF",
 
-    // Picker group
+    // === PICKER GROUP ===
     "pickerGroup.border": "#1e1e1e",
     "pickerGroup.foreground": "#9CA3AF",
 
-    // Dropdown
-    "dropdown.background": "#1e1e1e",
+    // === DROPDOWN ===
+    "dropdown.background": "#12171e",
     "dropdown.border": "#1e1e1e",
     "dropdown.foreground": "#E0E0E0",
 
-    // Editor indent guides
+    // === EDITOR INDENT GUIDES ===
     "editorIndentGuide.background": "#1e1e1e40",
     "editorIndentGuide.activeBackground": "#1e1e1e",
 
-    // Editor ruler
+    // === EDITOR RULER ===
     "editorRuler.foreground": "#1e1e1e",
 
-    // Selection
+    // === SELECTION ===
     "selection.background": "#47474780",
 
-    // Widget shadow
+    // === WIDGET SHADOW ===
     "widget.shadow": "#00000050",
 
-    // Toolbar
-    "toolbar.hoverBackground": "#1e1e1e",
+    // === TOOLBAR ===
+    "toolbar.hoverBackground": "#12171e",
     "toolbar.activeBackground": "#12171e",
 
-    // Notification buttons
-    "notificationCenterHeader.background": "#1e1e1e",
+    // === NOTIFICATION CENTER ===
+    "notificationCenterHeader.background": "#12171e",
     "notificationCenterHeader.foreground": "#E0E0E0",
     "notificationToast.border": "#1e1e1e",
     "notifications.border": "#1e1e1e",
 
-    // Badge
-    "badge.background": "#1e1e1e",
+    // === BADGE ===
+    "badge.background": "#12171e",
     "badge.foreground": "#E0E0E0",
 
-    // Editor gutter
+    // === EDITOR GUTTER ===
     "editorGutter.background": "#0A0A0A",
     "editorGutter.modifiedBackground": "#4D96FF80",
     "editorGutter.addedBackground": "#80808080",
     "editorGutter.deletedBackground": "#FF6B6B80",
 
-    // Minimap
+    // === MINIMAP ===
     "minimap.background": "#0A0A0A",
     "minimap.selectionHighlight": "#12171e",
     "minimapSlider.background": "#1e1e1e40",

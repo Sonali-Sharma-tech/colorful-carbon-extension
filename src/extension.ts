@@ -3,129 +3,170 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
-import { switchToTheme } from './theme-switcher';
+import { isManualSwitch } from './theme-switcher';
 
-export async function activate(context: vscode.ExtensionContext) {
+// Constants
+const THEME_NAMES = {
+    DEFAULT: 'Colorful Carbon',
+    DARK_NIGHT: 'Colorful Carbon Dark Night'
+} as const;
+
+const DELAYS = {
+    WELCOME_MESSAGE: 1000,
+    SETUP_REMINDER: 2000,
+    THEME_CONFIG_WRITE: 100
+} as const;
+
+const CONFIG_SECTION = 'colorfulCarbon';
+
+const FILE_PATHS = {
+    ZSHRC: '.zshrc',
+    STARSHIP_CONFIG: path.join('.config', 'starship.toml'),
+    THEME_MARKER: '.colorful-carbon-theme',
+    INSTALL_MARKER: path.join('.config', '.colorful-carbon-installed')
+} as const;
+
+// Helper: Get Colorful Carbon configuration
+function getColorfulCarbonConfig() {
+    return vscode.workspace.getConfiguration(CONFIG_SECTION);
+}
+
+// Helper: Get current theme name
+function getCurrentThemeName(): string | undefined {
+    return vscode.workspace.getConfiguration().get<string>('workbench.colorTheme');
+}
+
+// Helper: Check if theme is a Colorful Carbon theme
+function isColorfulCarbonTheme(themeName: string | undefined): boolean {
+    return themeName === THEME_NAMES.DEFAULT || themeName === THEME_NAMES.DARK_NIGHT;
+}
+
+// Helper: Get theme type from theme name
+function getThemeType(themeName: string): 'dark-night' | 'default' {
+    return themeName === THEME_NAMES.DARK_NIGHT ? 'dark-night' : 'default';
+}
+
+// Helper: Get absolute file path in home directory
+function getHomeFilePath(relativePath: string): string {
+    return path.join(os.homedir(), relativePath);
+}
+
+/**
+ * Initialize theme - apply terminal settings and update starship config if using our theme
+ */
+async function initializeTheme(config: vscode.WorkspaceConfiguration): Promise<void> {
     // Auto-apply terminal theme on activation
-    const config = vscode.workspace.getConfiguration('colorfulCarbon');
-
     if (config.get('autoApplyTerminalTheme')) {
         applyTerminalSettings();
     }
 
-    // Set Dark Night as default theme for development
-    const currentTheme = vscode.workspace.getConfiguration().get<string>('workbench.colorTheme');
-    if (!currentTheme || !currentTheme.includes('Colorful Carbon')) {
-        // Set Dark Night theme on first activation
-        await vscode.workspace.getConfiguration().update('workbench.colorTheme', 'Colorful Carbon Dark Night', vscode.ConfigurationTarget.Global);
-        await updateStarshipConfig('Colorful Carbon Dark Night');
-    } else if (currentTheme === 'Colorful Carbon' || currentTheme === 'Colorful Carbon Dark Night') {
+    // Update starship config if user is using one of our themes
+    const currentTheme = getCurrentThemeName();
+    if (currentTheme && isColorfulCarbonTheme(currentTheme)) {
         await updateStarshipConfig(currentTheme);
     }
+}
 
-    // Check if this is first activation
+
+/**
+ * Handle welcome message display based on activation state
+ */
+async function handleWelcomeMessage(
+    context: vscode.ExtensionContext,
+    config: vscode.WorkspaceConfiguration
+): Promise<void> {
     const isFirstActivation = context.globalState.get('colorfulCarbon.firstActivation', true);
     const setupDismissed = context.globalState.get('colorfulCarbon.setupDismissed', false);
+    const showWelcome = config.get('showWelcomeMessage', true);
+
+    if (!showWelcome) {
+        return;
+    }
 
     if (isFirstActivation) {
         // Mark as not first activation anymore
-        context.globalState.update('colorfulCarbon.firstActivation', false);
-
-        // Show smart welcome message
-        if (config.get('showWelcomeMessage')) {
-            // Delay slightly to ensure theme is applied first
-            setTimeout(() => showWelcomeMessage(context), 1000);
-        }
+        await context.globalState.update('colorfulCarbon.firstActivation', false);
+        // Delay slightly to ensure theme is applied first
+        setTimeout(() => {
+            showWelcomeMessage(context).catch(error => {
+                console.error('[Colorful Carbon] Error showing welcome message:', error);
+            });
+        }, DELAYS.WELCOME_MESSAGE);
     } else if (!setupDismissed) {
         // Check if there are still missing dependencies
         const missingDeps = await checkMissingDependencies();
-
-        if (missingDeps.length > 0 && config.get('showWelcomeMessage')) {
-            // Show a subtle reminder
-            setTimeout(() => showWelcomeMessage(context), 2000);
+        if (missingDeps.length > 0) {
+            setTimeout(() => {
+                showWelcomeMessage(context).catch(error => {
+                    console.error('[Colorful Carbon] Error showing setup reminder:', error);
+                });
+            }, DELAYS.SETUP_REMINDER);
         }
     }
+}
 
-    // Register commands
-    const applyCompleteSetup = vscode.commands.registerCommand('colorful-carbon.applyCompleteSetup', async () => {
-        await runCompleteSetup();
-    });
+/**
+ * Register all extension commands
+ */
+function registerCommands(context: vscode.ExtensionContext): void {
+    const commands = [
+        vscode.commands.registerCommand('colorful-carbon.applyCompleteSetup', runCompleteSetup),
+        vscode.commands.registerCommand('colorful-carbon.installTerminalDependencies', installTerminalDependencies),
+        vscode.commands.registerCommand('colorful-carbon.applyTerminalConfig', applyTerminalConfiguration),
+        vscode.commands.registerCommand('colorful-carbon.showSetupStatus', showSetupStatus),
+        vscode.commands.registerCommand('colorful-carbon.removeTerminalConfig', removeTerminalConfiguration),
+        vscode.commands.registerCommand('colorful-carbon.testExtension', testExtension)
+    ];
 
-    const installDependencies = vscode.commands.registerCommand('colorful-carbon.installTerminalDependencies', async () => {
-        await installTerminalDependencies();
-    });
+    context.subscriptions.push(...commands);
+}
 
-    const applyTerminalConfig = vscode.commands.registerCommand('colorful-carbon.applyTerminalConfig', async () => {
-        await applyTerminalConfiguration();
-    });
+/**
+ * Debug test command - shows extension status
+ */
+async function testExtension(): Promise<void> {
+    const config = getColorfulCarbonConfig();
+    const currentTheme = getCurrentThemeName();
+    const missingDeps = await checkMissingDependencies();
 
-    const showStatus = vscode.commands.registerCommand('colorful-carbon.showSetupStatus', async () => {
-        await showSetupStatus();
-    });
+    const message = `Colorful Carbon Test Results: Extension Active: ✓ | Current Theme: ${currentTheme} | Auto Apply Terminal: ${config.get('autoApplyTerminalTheme')} | Show Welcome: ${config.get('showWelcomeMessage')} | Missing Dependencies: ${missingDeps.length === 0 ? 'None' : missingDeps.join(', ')}`;
 
-    const removeConfig = vscode.commands.registerCommand('colorful-carbon.removeTerminalConfig', async () => {
-        await removeTerminalConfiguration();
-    });
+    vscode.window.showInformationMessage(message);
+}
 
-    // Add theme switching commands
-    const switchToDefault = vscode.commands.registerCommand('colorful-carbon.switchToDefault', async () => {
-        switchToTheme('default');
-    });
-
-    const switchToDarkNight = vscode.commands.registerCommand('colorful-carbon.switchToDarkNight', async () => {
-        switchToTheme('dark-night');
-    });
-
-    // Debug test command
-    const testExtension = vscode.commands.registerCommand('colorful-carbon.testExtension', async () => {
-        const config = vscode.workspace.getConfiguration('colorfulCarbon');
-        const currentTheme = vscode.workspace.getConfiguration().get('workbench.colorTheme');
-        const missingDeps = await checkMissingDependencies();
-
-        const message = `Colorful Carbon Test Results:
-- Extension Active: ✓
-- Current Theme: ${currentTheme}
-- Auto Apply Terminal: ${config.get('autoApplyTerminalTheme')}
-- Show Welcome: ${config.get('showWelcomeMessage')}
-- Missing Dependencies: ${missingDeps.length === 0 ? 'None' : missingDeps.join(', ')}`;
-
-        vscode.window.showInformationMessage(message.replace(/\n/g, ' | '));
-    });
-
-    context.subscriptions.push(applyCompleteSetup, installDependencies, applyTerminalConfig, showStatus, removeConfig, switchToDefault, switchToDarkNight, testExtension);
-
-    // Create status bar item
-    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    updateStatusBar(statusBarItem);
-    statusBarItem.show();
-    context.subscriptions.push(statusBarItem);
-
-    // Track last applied theme to avoid duplicate updates
+/**
+ * Setup theme change listener with automatic terminal reload
+ */
+function setupThemeChangeListener(context: vscode.ExtensionContext): void {
     let lastAppliedTheme: string | undefined;
 
-    // Listen for theme changes - automatically update starship config and reload terminals
     context.subscriptions.push(
         vscode.window.onDidChangeActiveColorTheme(async () => {
+            // Skip if manual theme switch is in progress to prevent double execution
+            if (isManualSwitch()) {
+                console.log('[Theme Listener] Skipping - manual switch in progress');
+                return;
+            }
+
             // Small delay to ensure config is fully written
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, DELAYS.THEME_CONFIG_WRITE));
 
-            const themeName = vscode.workspace.getConfiguration().get<string>('workbench.colorTheme');
+            const themeName = getCurrentThemeName();
 
-            if (themeName === 'Colorful Carbon' || themeName === 'Colorful Carbon Dark Night') {
+            if (isColorfulCarbonTheme(themeName)) {
                 // Only update if theme actually changed
                 if (lastAppliedTheme !== themeName) {
-                    const themeType = themeName === 'Colorful Carbon Dark Night' ? 'Dark Night' : 'Default';
+                    const themeType = themeName === THEME_NAMES.DARK_NIGHT ? 'Dark Night' : 'Default';
                     lastAppliedTheme = themeName;
 
                     // Update starship config based on theme
-                    await updateStarshipConfig(themeName);
+                    await updateStarshipConfig(themeName!);
+
+                    // Small delay to ensure file system flush completes
+                    await new Promise(resolve => setTimeout(resolve, 200));
 
                     // Automatically reload all existing terminals
-                    if (vscode.window.terminals.length > 0) {
-                        vscode.window.terminals.forEach(terminal => {
-                            terminal.sendText('clear && exec zsh', true);
-                        });
-                    }
+                    reloadAllTerminals();
 
                     // Show success message
                     vscode.window.showInformationMessage(
@@ -138,13 +179,40 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         })
     );
+}
 
-    // Update status bar periodically
-    const statusInterval = setInterval(() => updateStatusBar(statusBarItem), 30000); // Every 30 seconds
+/**
+ * Reload all active terminals
+ */
+function reloadAllTerminals(): void {
+    if (vscode.window.terminals.length > 0) {
+        vscode.window.terminals.forEach(terminal => {
+            // Use exec zsh to start fresh shell with new config
+            // Don't clear screen to preserve command history context
+            terminal.sendText('exec zsh', true);
+        });
+    }
+}
+
+
+/**
+ * Setup status bar with periodic updates
+ */
+function setupStatusBar(context: vscode.ExtensionContext): void {
+    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    updateStatusBar(statusBarItem);
+    statusBarItem.show();
+    context.subscriptions.push(statusBarItem);
+
+    // Update status bar periodically (every 30 seconds)
+    const statusInterval = setInterval(() => updateStatusBar(statusBarItem), 30000);
     context.subscriptions.push({ dispose: () => clearInterval(statusInterval) });
 }
 
-async function updateStatusBar(statusBarItem: vscode.StatusBarItem) {
+/**
+ * Update status bar text based on missing dependencies
+ */
+async function updateStatusBar(statusBarItem: vscode.StatusBarItem): Promise<void> {
     const missingDeps = await checkMissingDependencies();
 
     if (missingDeps.length === 0) {
@@ -160,7 +228,32 @@ async function updateStatusBar(statusBarItem: vscode.StatusBarItem) {
     statusBarItem.command = 'colorful-carbon.showSetupStatus';
 }
 
-function applyTerminalSettings() {
+/**
+ * Extension activation - initializes theme, git tracking, and UI components
+ */
+export async function activate(context: vscode.ExtensionContext) {
+    const config = getColorfulCarbonConfig();
+
+    // Initialize terminal theme
+    await initializeTheme(config);
+
+    // Show welcome message if needed
+    await handleWelcomeMessage(context, config);
+
+    // Register all commands
+    registerCommands(context);
+
+    // Setup status bar
+    setupStatusBar(context);
+
+    // Setup theme change listener
+    setupThemeChangeListener(context);
+}
+
+/**
+ * Apply terminal settings to VS Code workspace
+ */
+function applyTerminalSettings(): void {
     const config = vscode.workspace.getConfiguration();
 
     // Apply terminal colors that match our theme
@@ -178,7 +271,10 @@ function applyTerminalSettings() {
     });
 }
 
-async function showWelcomeMessage(context: vscode.ExtensionContext) {
+/**
+ * Show welcome message with setup options
+ */
+async function showWelcomeMessage(context: vscode.ExtensionContext): Promise<void> {
     // Check what's missing
     const missingDeps = await checkMissingDependencies();
     const hasAllDeps = missingDeps.length === 0;
@@ -211,6 +307,9 @@ async function showWelcomeMessage(context: vscode.ExtensionContext) {
     }
 }
 
+/**
+ * Check for missing terminal dependencies
+ */
 async function checkMissingDependencies(): Promise<string[]> {
     const missing: string[] = [];
 
@@ -237,7 +336,10 @@ async function checkMissingDependencies(): Promise<string[]> {
     return missing;
 }
 
-async function runCompleteSetup() {
+/**
+ * Run complete setup with progress notification
+ */
+async function runCompleteSetup(): Promise<void> {
     const steps = [
         { message: 'Checking system requirements...', action: checkRequirements },
         { message: 'Installing terminal dependencies...', action: installTerminalDependencies },
@@ -278,6 +380,9 @@ async function runCompleteSetup() {
     });
 }
 
+/**
+ * Check system requirements (platform and zsh)
+ */
 async function checkRequirements(): Promise<void> {
     const platform = os.platform();
     if (platform !== 'darwin' && platform !== 'linux') {
@@ -292,6 +397,9 @@ async function checkRequirements(): Promise<void> {
     }
 }
 
+/**
+ * Install terminal dependencies via Homebrew
+ */
 async function installTerminalDependencies(): Promise<void> {
     try {
         // Check if Homebrew is installed
@@ -335,29 +443,48 @@ async function installTerminalDependencies(): Promise<void> {
     vscode.window.setStatusBarMessage('Installing terminal dependencies...', 5000);
 }
 
+/**
+ * Apply terminal configuration - backup existing configs and write new ones
+ */
 async function applyTerminalConfiguration(): Promise<void> {
-    const homeDir = os.homedir();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
     // Backup existing configs
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const configs = ['.zshrc', '.config/starship.toml'];
+    backupConfigs(timestamp);
+
+    // Ensure .config directory exists
+    const configDir = getHomeFilePath('.config');
+    if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+    }
+
+    // Append zshrc configuration if not already present
+    appendZshrcConfig();
+
+    // Write starship config and theme marker based on current theme
+    writeStarshipConfig();
+}
+
+/**
+ * Backup configuration files before modification
+ */
+function backupConfigs(timestamp: string): void {
+    const configs = [FILE_PATHS.ZSHRC, FILE_PATHS.STARSHIP_CONFIG];
 
     configs.forEach(config => {
-        const configPath = path.join(homeDir, config);
+        const configPath = getHomeFilePath(config);
         if (fs.existsSync(configPath)) {
             const backupPath = `${configPath}.backup-${timestamp}`;
             fs.copyFileSync(configPath, backupPath);
         }
     });
+}
 
-    // Create .config directory if it doesn't exist
-    const configDir = path.join(homeDir, '.config');
-    if (!fs.existsSync(configDir)) {
-        fs.mkdirSync(configDir, { recursive: true });
-    }
-
-    // Handle .zshrc safely - append our config instead of overwriting
-    const zshrcPath = path.join(homeDir, '.zshrc');
+/**
+ * Append Colorful Carbon configuration to .zshrc if not already present
+ */
+function appendZshrcConfig(): void {
+    const zshrcPath = getHomeFilePath(FILE_PATHS.ZSHRC);
     const existingZshrc = fs.existsSync(zshrcPath) ? fs.readFileSync(zshrcPath, 'utf8') : '';
 
     // Check if our config is already present
@@ -371,18 +498,23 @@ ${getZshrcContent()}
 `;
         fs.appendFileSync(zshrcPath, zshrcAdditions);
     }
-
-    // Write starship.toml based on current theme
-    const currentTheme = vscode.workspace.getConfiguration().get<string>('workbench.colorTheme');
-    const isDarkNight = currentTheme === 'Colorful Carbon Dark Night';
-    const starshipContent = isDarkNight ? getDarkNightStarshipContent() : getStarshipContent();
-    fs.writeFileSync(path.join(homeDir, '.config', 'starship.toml'), starshipContent);
-
-    // Write theme marker file
-    const themeMarkerPath = path.join(homeDir, '.colorful-carbon-theme');
-    fs.writeFileSync(themeMarkerPath, isDarkNight ? 'dark-night' : 'default');
 }
 
+/**
+ * Write starship config and theme marker file based on current theme
+ */
+function writeStarshipConfig(): void {
+    const currentTheme = getCurrentThemeName();
+    const themeType = getThemeType(currentTheme || THEME_NAMES.DEFAULT);
+    const starshipContent = themeType === 'dark-night' ? getDarkNightStarshipContent() : getStarshipContent();
+
+    fs.writeFileSync(getHomeFilePath(FILE_PATHS.STARSHIP_CONFIG), starshipContent);
+    fs.writeFileSync(getHomeFilePath(FILE_PATHS.THEME_MARKER), themeType);
+}
+
+/**
+ * Setup Git color configuration for better terminal output
+ */
 async function setupGitColors(): Promise<void> {
     const gitCommands = [
         ['color.ui', 'auto'],
@@ -416,22 +548,27 @@ async function setupGitColors(): Promise<void> {
     }
 }
 
+/**
+ * Finalize setup - apply VS Code settings and create completion marker
+ */
 async function finalizeSetup(): Promise<void> {
     // Apply VS Code settings
     applyTerminalSettings();
 
     // Create a setup completion marker
-    const homeDir = os.homedir();
-    const markerPath = path.join(homeDir, '.config', '.colorful-carbon-installed');
+    const markerPath = getHomeFilePath(FILE_PATHS.INSTALL_MARKER);
     fs.writeFileSync(markerPath, new Date().toISOString());
 }
 
+/**
+ * Show setup status in quick pick dialog
+ */
 async function showSetupStatus(): Promise<void> {
     const items: string[] = [];
 
     // Check theme
-    const currentTheme = vscode.workspace.getConfiguration().get('workbench.colorTheme');
-    items.push(`✓ Theme: ${currentTheme === 'Colorful Carbon' ? '✅ Applied' : '❌ Not applied'}`);
+    const currentTheme = getCurrentThemeName();
+    items.push(`✓ Theme: ${currentTheme === THEME_NAMES.DEFAULT || currentTheme === THEME_NAMES.DARK_NIGHT ? '✅ Applied' : '❌ Not applied'}`);
 
     // Check commands in PATH
     const commands = ['starship', 'fzf'];
@@ -456,10 +593,9 @@ async function showSetupStatus(): Promise<void> {
     });
 
     // Check config files
-    const homeDir = os.homedir();
-    const configs = ['.zshrc', '.config/starship.toml'];
+    const configs = [FILE_PATHS.ZSHRC, FILE_PATHS.STARSHIP_CONFIG];
     configs.forEach(config => {
-        const exists = fs.existsSync(path.join(homeDir, config));
+        const exists = fs.existsSync(getHomeFilePath(config));
         items.push(`✓ ${config}: ${exists ? '✅ Configured' : '❌ Not configured'}`);
     });
 
@@ -469,6 +605,9 @@ async function showSetupStatus(): Promise<void> {
     });
 }
 
+/**
+ * Get zshrc configuration content with theme-aware git integration
+ */
 function getZshrcContent(): string {
     return `# Homebrew zsh plugins - tries multiple common locations
 if [[ -f /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
@@ -507,6 +646,49 @@ fi
 
 # FZF
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# Git upstream tracking helper - checks once per terminal session
+check_git_upstream() {
+    # Only run if in a git repository
+    if ! git rev-parse --git-dir &>/dev/null; then
+        return
+    fi
+
+    # Get current branch
+    local current_branch=$(git branch --show-current 2>/dev/null)
+    if [[ -z "$current_branch" ]]; then
+        return
+    fi
+
+    # Get upstream branch
+    local upstream=$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)
+
+    # Check if remote branch exists
+    local remote_branch="origin/$current_branch"
+    git show-ref --verify --quiet "refs/remotes/$remote_branch" 2>/dev/null
+    local remote_exists=$?
+
+    # Case 1: No upstream set but remote exists
+    if [[ -z "$upstream" && $remote_exists -eq 0 ]]; then
+        echo ""
+        echo "ℹ️  Remote branch '$remote_branch' exists but upstream not set"
+        echo "💡 Run: git branch --set-upstream-to=$remote_branch"
+        echo ""
+    # Case 2: Upstream set but doesn't match current branch
+    elif [[ -n "$upstream" && "$upstream" != "$remote_branch" && $remote_exists -eq 0 ]]; then
+        echo ""
+        echo "⚠️  Branch '$current_branch' is tracking '$upstream'"
+        echo "💡 To track '$remote_branch' instead, run:"
+        echo "    git branch --set-upstream-to=$remote_branch"
+        echo ""
+    fi
+}
+
+# Run check once per terminal (suppress if already checked)
+if [[ -z "$CC_GIT_CHECK_DONE" ]]; then
+    export CC_GIT_CHECK_DONE=1
+    check_git_upstream
+fi
 
 # Initialize Starship prompt
 eval "$(starship init zsh)"
@@ -558,21 +740,32 @@ alias glog='git log --oneline -10'
 `;
 }
 
+/**
+ * Update Starship configuration based on theme
+ */
 async function updateStarshipConfig(themeName: string): Promise<void> {
-    const homeDir = os.homedir();
-    const starshipPath = path.join(homeDir, '.config', 'starship.toml');
-    const themeMarkerPath = path.join(homeDir, '.colorful-carbon-theme');
+    const themeType = getThemeType(themeName);
+    const starshipContent = themeType === 'dark-night' ? getDarkNightStarshipContent() : getStarshipContent();
 
-    // Determine theme type and update marker file
-    const themeType = themeName === 'Colorful Carbon Dark Night' ? 'dark-night' : 'default';
-    fs.writeFileSync(themeMarkerPath, themeType);
+    const starshipPath = getHomeFilePath(FILE_PATHS.STARSHIP_CONFIG);
+    const markerPath = getHomeFilePath(FILE_PATHS.THEME_MARKER);
 
-    // Write appropriate starship config
-    const isDarkNight = themeName === 'Colorful Carbon Dark Night';
-    const starshipContent = isDarkNight ? getDarkNightStarshipContent() : getStarshipContent();
+    // Write and sync starship config
     fs.writeFileSync(starshipPath, starshipContent);
+    const starshipFd = fs.openSync(starshipPath, 'r');
+    fs.fsyncSync(starshipFd);
+    fs.closeSync(starshipFd);
+
+    // Write and sync theme marker
+    fs.writeFileSync(markerPath, themeType);
+    const markerFd = fs.openSync(markerPath, 'r');
+    fs.fsyncSync(markerFd);
+    fs.closeSync(markerFd);
 }
 
+/**
+ * Get default Starship theme configuration content
+ */
 function getStarshipContent(): string {
     return `# Custom Color-Coded Starship Theme
 
@@ -581,6 +774,7 @@ $username\\
 $hostname\\
 $directory\\
 $git_branch\\
+\${custom.git_upstream}\\
 $git_status\\
 $cmd_duration\\
 $time\\
@@ -611,21 +805,75 @@ read_only_style = "bold red"
 [git_branch]
 symbol = "🎋 "
 style = "bold fg:205"
-format = 'on [$symbol$branch](bold fg:205)[(->$remote_branch)](bold fg:150) '
+format = 'on [$symbol$branch](bold fg:205) '
 
 [git_status]
-format = '([$all_status$ahead_behind]($style))'
-conflicted = "[#conflicts](bold red) "
-ahead = "[\u2191\${count}](bold green) "
-behind = "[\u2193\${count}](bold yellow) "
-diverged = "[\u2191\${ahead_count}](bold green)[\u2193\${behind_count}](bold yellow) "
+format = '([$all_status]($style)) '
+conflicted = "[⚠️ conflicts](bold red) "
+ahead = ""
+behind = ""
+diverged = ""
 untracked = ""
 stashed = ""
 modified = ""
 staged = ""
 renamed = ""
 deleted = ""
-up_to_date = "[#synced](bold fg:172) "
+up_to_date = ""
+
+# Custom module to show git upstream branch with mismatch detection
+[custom.git_upstream]
+command = '''
+current=$(git branch --show-current 2>/dev/null)
+upstream=$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)
+
+if [ -z "$upstream" ]; then
+  exit 0
+fi
+
+# Calculate ahead/behind for tracked upstream
+up_ahead=$(git rev-list --count @{upstream}..HEAD 2>/dev/null || echo 0)
+up_behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0)
+
+# Show upstream with its status
+printf "%s" "-> $upstream "
+if [ "$up_ahead" -gt 0 ] || [ "$up_behind" -gt 0 ]; then
+  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆$up_ahead"
+  [ "$up_behind" -gt 0 ] && printf "%s" "⬇$up_behind"
+  printf "%s" " "
+else
+  printf "%s" "(#synced) "
+fi
+
+# Check if origin/<current> exists and is different from upstream
+if [ -n "$current" ]; then
+  remote_branch="origin/$current"
+
+  # Check if remote branch exists
+  if git show-ref --verify --quiet "refs/remotes/$remote_branch" 2>/dev/null; then
+    # If tracking different branch, show origin/<current> status
+    if [ "$upstream" != "$remote_branch" ]; then
+      # Calculate ahead/behind for origin/<current>
+      ahead=$(git rev-list --count $remote_branch..HEAD 2>/dev/null || echo 0)
+      behind=$(git rev-list --count HEAD..$remote_branch 2>/dev/null || echo 0)
+
+      # Always show when there's a mismatch
+      printf "%s" "| $remote_branch "
+      if [ "$ahead" -gt 0 ] || [ "$behind" -gt 0 ]; then
+        [ "$ahead" -gt 0 ] && printf "%s" "⬆$ahead"
+        [ "$behind" -gt 0 ] && printf "%s" "⬇$behind"
+      else
+        printf "%s" "(#synced)"
+      fi
+      printf "%s" " "
+    fi
+  fi
+fi
+'''
+when = "git rev-parse --git-dir 2>/dev/null"
+shell = ["sh"]
+style = "bold fg:150"
+format = "[$output]($style)"
 
 [nodejs]
 symbol = " "
@@ -653,6 +901,9 @@ utc_time_offset = 'local'
 `;
 }
 
+/**
+ * Get Dark Night Starship theme configuration content
+ */
 function getDarkNightStarshipContent(): string {
     return `# Custom Color-Coded Starship Theme - Dark Night
 
@@ -661,6 +912,7 @@ $username\\
 $hostname\\
 $directory\\
 $git_branch\\
+\${custom.git_upstream}\\
 $git_status\\
 $cmd_duration\\
 $time\\
@@ -691,21 +943,75 @@ read_only_style = "bold red"
 [git_branch]
 symbol = "🎋 "
 style = "bold fg:#FFD93D"
-format = 'on [$symbol$branch](bold fg:#FFD93D)[(->$remote_branch)](bold fg:#C792EA) '
+format = 'on [$symbol$branch](bold fg:#FFD93D) '
 
 [git_status]
-format = '([$all_status$ahead_behind]($style))'
-conflicted = "[#conflicts](bold fg:#FF6B6B) "
-ahead = "[\u2191\${count}](bold fg:#6BCB77) "
-behind = "[\u2193\${count}](bold fg:#FF8B13) "
-diverged = "[\u2191\${ahead_count}](bold fg:#6BCB77)[\u2193\${behind_count}](bold fg:#FF8B13) "
+format = '([$all_status$ahead_behind]($style)) '
+conflicted = "[⚠️ conflicts](bold fg:#FF6B6B) "
+ahead = "[⬆\${count}](bold fg:#6BCB77) "
+behind = "[⬇\${count}](bold fg:#FF8B13) "
+diverged = "[⇅ ⬆\${ahead_count}⬇\${behind_count}](bold fg:#FF8B13) "
 untracked = ""
 stashed = ""
 modified = ""
 staged = ""
 renamed = ""
 deleted = ""
-up_to_date = "[#synced](bold fg:172) "
+up_to_date = "[(#synced)](bold fg:#6BCB77) "
+
+# Custom module to show git upstream branch with mismatch detection
+[custom.git_upstream]
+command = '''
+current=$(git branch --show-current 2>/dev/null)
+upstream=$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)
+
+if [ -z "$upstream" ]; then
+  exit 0
+fi
+
+# Calculate ahead/behind for tracked upstream
+up_ahead=$(git rev-list --count @{upstream}..HEAD 2>/dev/null || echo 0)
+up_behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0)
+
+# Show upstream with its status
+printf "%s" "-> $upstream "
+if [ "$up_ahead" -gt 0 ] || [ "$up_behind" -gt 0 ]; then
+  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆$up_ahead"
+  [ "$up_behind" -gt 0 ] && printf "%s" "⬇$up_behind"
+  printf "%s" " "
+else
+  printf "%s" "(#synced) "
+fi
+
+# Check if origin/<current> exists and is different from upstream
+if [ -n "$current" ]; then
+  remote_branch="origin/$current"
+
+  # Check if remote branch exists
+  if git show-ref --verify --quiet "refs/remotes/$remote_branch" 2>/dev/null; then
+    # If tracking different branch, show origin/<current> status
+    if [ "$upstream" != "$remote_branch" ]; then
+      # Calculate ahead/behind for origin/<current>
+      ahead=$(git rev-list --count $remote_branch..HEAD 2>/dev/null || echo 0)
+      behind=$(git rev-list --count HEAD..$remote_branch 2>/dev/null || echo 0)
+
+      # Always show when there's a mismatch
+      printf "%s" "| $remote_branch "
+      if [ "$ahead" -gt 0 ] || [ "$behind" -gt 0 ]; then
+        [ "$ahead" -gt 0 ] && printf "%s" "⬆$ahead"
+        [ "$behind" -gt 0 ] && printf "%s" "⬇$behind"
+      else
+        printf "%s" "(#synced)"
+      fi
+      printf "%s" " "
+    fi
+  fi
+fi
+'''
+when = "git rev-parse --git-dir 2>/dev/null"
+shell = ["sh"]
+style = "bold fg:#C792EA"
+format = "[$output]($style)"
 
 [nodejs]
 symbol = " "
@@ -733,6 +1039,9 @@ utc_time_offset = 'local'
 `;
 }
 
+/**
+ * Remove Colorful Carbon terminal configurations
+ */
 async function removeTerminalConfiguration(): Promise<void> {
     const confirm = await vscode.window.showWarningMessage(
         'This will remove Colorful Carbon terminal configurations. Your original settings will be preserved. Continue?',
@@ -744,10 +1053,8 @@ async function removeTerminalConfiguration(): Promise<void> {
         return;
     }
 
-    const homeDir = os.homedir();
-
     // Remove our section from .zshrc
-    const zshrcPath = path.join(homeDir, '.zshrc');
+    const zshrcPath = getHomeFilePath(FILE_PATHS.ZSHRC);
     if (fs.existsSync(zshrcPath)) {
         const content = fs.readFileSync(zshrcPath, 'utf8');
         // Remove our configuration block
@@ -759,7 +1066,7 @@ async function removeTerminalConfiguration(): Promise<void> {
     }
 
     // Remove starship.toml (only if it's ours)
-    const starshipPath = path.join(homeDir, '.config', 'starship.toml');
+    const starshipPath = getHomeFilePath(FILE_PATHS.STARSHIP_CONFIG);
     if (fs.existsSync(starshipPath)) {
         const content = fs.readFileSync(starshipPath, 'utf8');
         if (content.includes('Custom Color-Coded Starship Theme')) {

@@ -3,20 +3,38 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
+// Flag to prevent double execution when using theme switch commands
+let isManualThemeSwitch = false;
+
+export function isManualSwitch(): boolean {
+    return isManualThemeSwitch;
+}
+
 export function switchToTheme(themeName: 'default' | 'dark-night') {
     const homeDir = os.homedir();
 
     console.log(`Switching to ${themeName} theme...`);
 
+    // Set flag BEFORE any operations to prevent listener from firing
+    isManualThemeSwitch = true;
+
     // 1. Update theme marker file
     const themeMarkerPath = path.join(homeDir, '.colorful-carbon-theme');
     fs.writeFileSync(themeMarkerPath, themeName);
+    // Force file system sync to ensure file is written before terminal reload
+    const markerFd = fs.openSync(themeMarkerPath, 'r');
+    fs.fsyncSync(markerFd);
+    fs.closeSync(markerFd);
     console.log(`✓ Updated theme marker: ${themeName}`);
 
     // 2. Update starship.toml
     const starshipPath = path.join(homeDir, '.config', 'starship.toml');
     const starshipContent = themeName === 'dark-night' ? getDarkNightStarshipContent() : getDefaultStarshipContent();
     fs.writeFileSync(starshipPath, starshipContent);
+    // Force file system sync to ensure file is written before terminal reload
+    const starshipFd = fs.openSync(starshipPath, 'r');
+    fs.fsyncSync(starshipFd);
+    fs.closeSync(starshipFd);
     console.log(`✓ Updated starship.toml for ${themeName} theme`);
 
     // 3. Update VS Code theme
@@ -49,6 +67,12 @@ export function switchToTheme(themeName: 'default' | 'dark-night') {
             }, 1000);
         }
     });
+
+    // Reset flag after theme switch completes (500ms should be enough)
+    setTimeout(() => {
+        isManualThemeSwitch = false;
+        console.log('✓ Manual theme switch flag reset');
+    }, 500);
 }
 
 function applyTerminalSettings() {
