@@ -151,7 +151,7 @@
     "titleBar.activeBackground": "#0A0A0A",
     "titleBar.activeForeground": "#E0E0E0",
     "titleBar.inactiveBackground": "#12171e",
-    "titleBar.inactiveForeground": "#28333a",
+    "titleBar.inactiveForeground": "#E0E0E0",
 
     // === MENU ===
     "menu.background": "#0A0A0A",

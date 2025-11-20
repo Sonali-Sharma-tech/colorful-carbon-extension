@@ -255,7 +255,7 @@ if [[ -z "$COLORFUL_CARBON_DISABLE_AUTOFETCH" ]]; then
     [[ -f "$cache_file" ]] && last_fetch=$(cat "$cache_file" 2>/dev/null || echo 0)
     local now=$(date +%s)
     local age=$((now - last_fetch))
-    if [[ $age -gt 300 ]] && [[ ! -f "$lock_file" ]]; then
+    if [[ $age -gt 900 ]] && [[ ! -f "$lock_file" ]]; then
       touch "$lock_file" 2>/dev/null || return
       (
         if git fetch --quiet --all --prune --tags 2>/dev/null; then
@@ -626,24 +626,33 @@ function writeStarshipConfig(): void {
 }
 
 /**
- * Setup Git color configuration for better terminal output
+ * Setup Git color configuration based on theme
  */
-async function setupGitColors(): Promise<void> {
+async function setupGitColorsForTheme(themeType: 'default' | 'dark-night'): Promise<void> {
+    // Theme-specific colors
+    const branchColor = themeType === 'dark-night' ? 'yellow bold' : 'magenta bold';
+    const addedChangesColor = themeType === 'dark-night' ? 'magenta bold' : 'green';
+
     const gitCommands = [
         ['color.ui', 'auto'],
         ['color.status', 'always'],
-        ['color.status.branch', 'yellow bold'],
-        ['color.status.localBranch', 'yellow bold'],
-        ['color.status.remoteBranch', 'yellow bold'],
-        ['color.status.header', 'magenta'],
-        ['color.status.added', 'green'],
-        ['color.status.changed', 'yellow'],
+        ['color.status.branch', branchColor],
+        ['color.status.localBranch', branchColor],
+        ['color.status.remoteBranch', branchColor],
+        ['color.status.header', 'normal'],
+        ['color.status.added', addedChangesColor],
+        ['color.status.updated', addedChangesColor],
+        ['color.status.changed', 'normal'],
         ['color.status.untracked', 'yellow'],
         ['color.status.deleted', 'red'],
         ['color.diff.meta', 'bold yellow'],
         ['color.diff.frag', 'magenta bold'],
         ['color.diff.old', 'red'],
-        ['color.diff.new', 'green']
+        ['color.diff.new', 'green'],
+        ['color.branch.current', branchColor],
+        ['color.branch.local', branchColor],
+        ['color.branch.remote', branchColor],
+        ['color.decorate.branch', themeType === 'dark-night' ? 'yellow' : 'magenta']
     ];
 
     let failedCommands = 0;
@@ -659,6 +668,14 @@ async function setupGitColors(): Promise<void> {
     if (failedCommands > 0) {
         vscode.window.showWarningMessage(`Some Git color settings could not be applied (${failedCommands} failed)`);
     }
+}
+
+/**
+ * Setup Git color configuration for better terminal output (initial setup)
+ */
+async function setupGitColors(): Promise<void> {
+    // Use default theme colors for initial setup
+    await setupGitColorsForTheme('default');
 }
 
 /**
@@ -842,8 +859,8 @@ if [[ -z "$COLORFUL_CARBON_DISABLE_AUTOFETCH" ]]; then
     local now=$(date +%s)
     local age=$((now - last_fetch))
 
-    # Fetch if: (1) >5min old, (2) not locked, (3) not already fetching
-    if [[ $age -gt 300 ]] && [[ ! -f "$lock_file" ]]; then
+    # Fetch if: (1) >15min old, (2) not locked, (3) not already fetching
+    if [[ $age -gt 900 ]] && [[ ! -f "$lock_file" ]]; then
       touch "$lock_file" 2>/dev/null || return
 
       # Background fetch (non-blocking, disowned)
@@ -960,6 +977,9 @@ async function updateStarshipConfig(themeName: string): Promise<void> {
     const markerFd = fs.openSync(markerPath, 'r');
     fs.fsyncSync(markerFd);
     fs.closeSync(markerFd);
+
+    // Update git command colors to match theme
+    await setupGitColorsForTheme(themeType);
 }
 
 /**
@@ -1059,7 +1079,7 @@ else
     now=$(date +%s)
     age=$((now - last_fetch))
 
-    if [ $age -lt 300 ]; then
+    if [ $age -lt 900 ]; then
       printf "%s" "(#synced) "
     fi
   fi
@@ -1218,7 +1238,7 @@ else
     now=$(date +%s)
     age=$((now - last_fetch))
 
-    if [ $age -lt 300 ]; then
+    if [ $age -lt 900 ]; then
       printf "%s" "(#synced) "
     fi
   fi
