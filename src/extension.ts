@@ -222,6 +222,120 @@ async function updateStatusBar(statusBarItem: vscode.StatusBarItem): Promise<voi
 }
 
 /**
+ * Install smart fetch feature to user's .zshrc
+ */
+async function installSmartFetch(): Promise<void> {
+    const zshrcPath = getHomeFilePath(FILE_PATHS.ZSHRC);
+    const content = fs.readFileSync(zshrcPath, 'utf8');
+
+    if (content.includes('__colorful_carbon_fetch')) {
+        return; // Already installed
+    }
+
+    const smartFetchBlock = `# Colorful Carbon: Smart Git Auto-Fetch (opt-out: COLORFUL_CARBON_DISABLE_AUTOFETCH=1)
+if [[ -z "$COLORFUL_CARBON_DISABLE_AUTOFETCH" ]]; then
+  function __colorful_carbon_fetch() {
+    git rev-parse --git-dir >/dev/null 2>&1 || return
+    local repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+    [[ -z "$repo_root" ]] && return
+    local cache_dir="$HOME/.git-fetch-cache"
+    local hash
+    if command -v shasum >/dev/null 2>&1; then
+      hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+    elif command -v sha256sum >/dev/null 2>&1; then
+      hash=$(echo -n "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
+    else
+      hash=$(echo -n "$repo_root" | sed 's/\\\\//_/g')
+    fi
+    local cache_file="$cache_dir/$hash"
+    local lock_file="$cache_file.lock"
+    mkdir -p "$cache_dir" 2>/dev/null || return
+    find "$cache_dir" -type f -not -name "*.lock" -mtime +30 -delete 2>/dev/null || true
+    local last_fetch=0
+    [[ -f "$cache_file" ]] && last_fetch=$(cat "$cache_file" 2>/dev/null || echo 0)
+    local now=$(date +%s)
+    local age=$((now - last_fetch))
+    if [[ $age -gt 300 ]] && [[ ! -f "$lock_file" ]]; then
+      touch "$lock_file" 2>/dev/null || return
+      (
+        if git fetch --quiet --all --prune --tags 2>/dev/null; then
+          echo $now > "$cache_file"
+        fi
+        rm -f "$lock_file"
+      ) &!
+    fi
+  }
+  if [[ ! " \${chpwd_functions[@]} " =~ " __colorful_carbon_fetch " ]]; then
+    chpwd_functions+=(__colorful_carbon_fetch)
+  fi
+  __colorful_carbon_fetch
+fi
+
+`;
+
+    const updatedContent = content.replace(
+        /# Initialize Starship prompt/,
+        `${smartFetchBlock}# Initialize Starship prompt`
+    );
+
+    fs.writeFileSync(zshrcPath, updatedContent);
+}
+
+/**
+ * Ensure existing users get latest terminal configuration updates
+ * Auto-upgrades if autoApplyTerminalTheme is enabled, shows notification otherwise
+ */
+async function ensureLatestTerminalConfig(context: vscode.ExtensionContext): Promise<void> {
+    const zshrcPath = getHomeFilePath(FILE_PATHS.ZSHRC);
+
+    if (!fs.existsSync(zshrcPath)) {
+        return; // User hasn't set up terminal yet
+    }
+
+    const content = fs.readFileSync(zshrcPath, 'utf8');
+
+    // Only proceed if user has already opted-in
+    if (!content.includes('# Colorful Carbon Configuration - START')) {
+        return; // User never ran setup - respect their choice
+    }
+
+    const config = getColorfulCarbonConfig();
+    const autoApply = config.get('autoApplyTerminalTheme', true);
+
+    // Check if smart fetch is missing (new feature in v1.1)
+    if (!content.includes('__colorful_carbon_fetch')) {
+        if (autoApply) {
+            // User has auto-apply enabled - upgrade silently
+            await installSmartFetch();
+        } else {
+            // User prefers manual control - show notification
+            const hasPrompted = context.globalState.get('smartFetchUpgradePrompted', false);
+
+            if (!hasPrompted) {
+                const choice = await vscode.window.showInformationMessage(
+                    '🎯 New: Smart Git Fetch - Keeps terminal git status accurate. Enable?',
+                    'Enable',
+                    'Not Now'
+                );
+
+                await context.globalState.update('smartFetchUpgradePrompted', true);
+
+                if (choice === 'Enable') {
+                    await installSmartFetch();
+                    vscode.window.showInformationMessage('✅ Smart Git Fetch enabled! Open a new terminal to see it in action.');
+                }
+            }
+        }
+    }
+
+    // Always update starship config to latest (idempotent)
+    const currentTheme = getCurrentThemeName();
+    if (currentTheme && isColorfulCarbonTheme(currentTheme)) {
+        await updateStarshipConfig(currentTheme);
+    }
+}
+
+/**
  * Extension activation - initializes theme, git tracking, and UI components
  */
 export async function activate(context: vscode.ExtensionContext) {
@@ -229,6 +343,9 @@ export async function activate(context: vscode.ExtensionContext) {
     setupThemeChangeListener(context);
 
     const config = getColorfulCarbonConfig();
+
+    // Ensure existing users get latest terminal config updates
+    await ensureLatestTerminalConfig(context);
 
     // Initialize terminal theme
     await initializeTheme(config);
@@ -453,6 +570,9 @@ async function applyTerminalConfiguration(): Promise<void> {
 
     // Append zshrc configuration if not already present
     appendZshrcConfig();
+
+    // Ensure smart fetch is installed (even if user clicked "Not Now" before)
+    await installSmartFetch();
 
     // Write starship config and theme marker based on current theme
     writeStarshipConfig();
