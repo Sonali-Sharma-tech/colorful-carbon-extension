@@ -513,24 +513,33 @@ function writeStarshipConfig(): void {
 }
 
 /**
- * Setup Git color configuration for better terminal output
+ * Setup Git color configuration based on theme
  */
-async function setupGitColors(): Promise<void> {
+async function setupGitColorsForTheme(themeType: 'default' | 'dark-night'): Promise<void> {
+    // Theme-specific colors
+    const branchColor = themeType === 'dark-night' ? 'yellow bold' : 'magenta bold';
+    const addedChangesColor = themeType === 'dark-night' ? 'magenta bold' : 'green';
+
     const gitCommands = [
         ['color.ui', 'auto'],
         ['color.status', 'always'],
-        ['color.status.branch', 'yellow bold'],
-        ['color.status.localBranch', 'yellow bold'],
-        ['color.status.remoteBranch', 'yellow bold'],
-        ['color.status.header', 'magenta'],
-        ['color.status.added', 'green'],
-        ['color.status.changed', 'yellow'],
+        ['color.status.branch', branchColor],
+        ['color.status.localBranch', branchColor],
+        ['color.status.remoteBranch', branchColor],
+        ['color.status.header', 'normal'],
+        ['color.status.added', addedChangesColor],
+        ['color.status.updated', addedChangesColor],
+        ['color.status.changed', 'normal'],
         ['color.status.untracked', 'yellow'],
         ['color.status.deleted', 'red'],
         ['color.diff.meta', 'bold yellow'],
         ['color.diff.frag', 'magenta bold'],
         ['color.diff.old', 'red'],
-        ['color.diff.new', 'green']
+        ['color.diff.new', 'green'],
+        ['color.branch.current', branchColor],
+        ['color.branch.local', branchColor],
+        ['color.branch.remote', branchColor],
+        ['color.decorate.branch', themeType === 'dark-night' ? 'yellow' : 'magenta']
     ];
 
     let failedCommands = 0;
@@ -546,6 +555,16 @@ async function setupGitColors(): Promise<void> {
     if (failedCommands > 0) {
         vscode.window.showWarningMessage(`Some Git color settings could not be applied (${failedCommands} failed)`);
     }
+}
+
+/**
+ * Setup Git color configuration for better terminal output
+ * Uses current theme to determine colors
+ */
+async function setupGitColors(): Promise<void> {
+    const currentTheme = getCurrentThemeName();
+    const themeType = getThemeType(currentTheme || THEME_NAMES.DEFAULT);
+    await setupGitColorsForTheme(themeType);
 }
 
 /**
@@ -761,6 +780,9 @@ async function updateStarshipConfig(themeName: string): Promise<void> {
     const markerFd = fs.openSync(markerPath, 'r');
     fs.fsyncSync(markerFd);
     fs.closeSync(markerFd);
+
+    // Update git command colors to match theme
+    await setupGitColorsForTheme(themeType);
 }
 
 /**
