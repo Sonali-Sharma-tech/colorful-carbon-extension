@@ -235,38 +235,48 @@ async function installSmartFetch(): Promise<void> {
     const smartFetchBlock = `# Colorful Carbon: Smart Git Auto-Fetch (opt-out: COLORFUL_CARBON_DISABLE_AUTOFETCH=1)
 if [[ -z "$COLORFUL_CARBON_DISABLE_AUTOFETCH" ]]; then
   function __colorful_carbon_fetch() {
+    # LAYER 1: Quick exit if not in git repo (~5ms)
     git rev-parse --git-dir >/dev/null 2>&1 || return
+
+    # LAYER 2: Get repo root and hash (~10ms)
     local repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
     [[ -z "$repo_root" ]] && return
+
     local cache_dir="$HOME/.git-fetch-cache"
-    local hash
-    if command -v shasum >/dev/null 2>&1; then
-      hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
-    elif command -v sha256sum >/dev/null 2>&1; then
-      hash=$(echo -n "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
-    else
-      hash=$(echo -n "$repo_root" | sed 's/\\\\//_/g')
-    fi
+    local hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+    [[ -z "$hash" ]] && return
+
     local cache_file="$cache_dir/$hash"
-    local lock_file="$cache_file.lock"
-    mkdir -p "$cache_dir" 2>/dev/null || return
-    find "$cache_dir" -type f -not -name "*.lock" -mtime +30 -delete 2>/dev/null || true
+
+    # LAYER 3: Quick cache age check (~5ms) - Exit early if fresh
     local last_fetch=0
     [[ -f "$cache_file" ]] && last_fetch=$(cat "$cache_file" 2>/dev/null || echo 0)
     local now=$(date +%s)
     local age=$((now - last_fetch))
-    if [[ $age -gt 900 ]] && [[ ! -f "$lock_file" ]]; then
-      touch "$lock_file" 2>/dev/null || return
-      (
-        if git fetch --quiet --all --prune --tags 2>/dev/null; then
-          echo $now > "$cache_file"
-        fi
-        rm -f "$lock_file"
-      ) &!
-    fi
+
+    [[ $age -lt 900 ]] && return  # Cache fresh, exit early
+
+    # LAYER 4: Only now do expensive operations
+    local lock_file="$cache_file.lock"
+    [[ -f "$lock_file" ]] && return  # Already fetching
+
+    mkdir -p "$cache_dir" 2>/dev/null || return
+    find "$cache_dir" -type f -not -name "*.lock" -mtime +30 -delete 2>/dev/null || true
+
+    touch "$lock_file" 2>/dev/null || return
+    (
+      if git fetch --quiet --all --prune --tags 2>/dev/null; then
+        echo $now > "$cache_file"
+      fi
+      rm -f "$lock_file"
+    ) &!
   }
+
   if [[ ! " \${chpwd_functions[@]} " =~ " __colorful_carbon_fetch " ]]; then
     chpwd_functions+=(__colorful_carbon_fetch)
+  fi
+  if [[ ! " \${preexec_functions[@]} " =~ " __colorful_carbon_fetch " ]]; then
+    preexec_functions+=(__colorful_carbon_fetch)
   fi
   __colorful_carbon_fetch
 fi
@@ -822,63 +832,50 @@ fi
 
 # Colorful Carbon: Smart Git Auto-Fetch (opt-out: COLORFUL_CARBON_DISABLE_AUTOFETCH=1)
 if [[ -z "$COLORFUL_CARBON_DISABLE_AUTOFETCH" ]]; then
-  # Use namespaced function name to avoid collisions
   function __colorful_carbon_fetch() {
-    # Safety: Only run in git repos
+    # LAYER 1: Quick exit if not in git repo (~5ms)
     git rev-parse --git-dir >/dev/null 2>&1 || return
 
+    # LAYER 2: Get repo root and hash (~10ms)
     local repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
     [[ -z "$repo_root" ]] && return
 
     local cache_dir="$HOME/.git-fetch-cache"
-
-    # Portable hashing with fallback
-    local hash
-    if command -v shasum >/dev/null 2>&1; then
-      hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
-    elif command -v sha256sum >/dev/null 2>&1; then
-      hash=$(echo -n "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
-    else
-      # Fallback: Simple path mangling (no hash needed, path is already unique)
-      hash=$(echo -n "$repo_root" | sed 's/\\//_/g')
-    fi
+    local hash=$(echo -n "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
+    [[ -z "$hash" ]] && return
 
     local cache_file="$cache_dir/$hash"
-    local lock_file="$cache_file.lock"
 
-    # Safety: Handle mkdir failure gracefully
-    mkdir -p "$cache_dir" 2>/dev/null || return
-
-    # Cleanup old cache files (>30 days) - non-critical, ignore errors
-    find "$cache_dir" -type f -not -name "*.lock" -mtime +30 -delete 2>/dev/null || true
-
-    # Read last fetch time
+    # LAYER 3: Quick cache age check (~5ms) - Exit early if fresh
     local last_fetch=0
     [[ -f "$cache_file" ]] && last_fetch=$(cat "$cache_file" 2>/dev/null || echo 0)
-
     local now=$(date +%s)
     local age=$((now - last_fetch))
 
-    # Fetch if: (1) >15min old, (2) not locked, (3) not already fetching
-    if [[ $age -gt 900 ]] && [[ ! -f "$lock_file" ]]; then
-      touch "$lock_file" 2>/dev/null || return
+    [[ $age -lt 900 ]] && return  # Cache fresh, exit early
 
-      # Background fetch (non-blocking, disowned)
-      (
-        if git fetch --quiet --all --prune --tags 2>/dev/null; then
-          echo $now > "$cache_file"
-        fi
-        rm -f "$lock_file"
-      ) &!
-    fi
+    # LAYER 4: Only now do expensive operations
+    local lock_file="$cache_file.lock"
+    [[ -f "$lock_file" ]] && return  # Already fetching
+
+    mkdir -p "$cache_dir" 2>/dev/null || return
+    find "$cache_dir" -type f -not -name "*.lock" -mtime +30 -delete 2>/dev/null || true
+
+    touch "$lock_file" 2>/dev/null || return
+    (
+      if git fetch --quiet --all --prune --tags 2>/dev/null; then
+        echo $now > "$cache_file"
+      fi
+      rm -f "$lock_file"
+    ) &!
   }
 
-  # Safety: Only add to chpwd_functions if not already present
   if [[ ! " \${chpwd_functions[@]} " =~ " __colorful_carbon_fetch " ]]; then
     chpwd_functions+=(__colorful_carbon_fetch)
   fi
-
-  # Run on shell startup
+  if [[ ! " \${preexec_functions[@]} " =~ " __colorful_carbon_fetch " ]]; then
+    preexec_functions+=(__colorful_carbon_fetch)
+  fi
   __colorful_carbon_fetch
 fi
 
