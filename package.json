@@ -74,6 +74,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show welcome message with setup instructions"
+        },
+        "colorfulCarbon.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show status bar when dependencies are missing"
         }
       }
     }

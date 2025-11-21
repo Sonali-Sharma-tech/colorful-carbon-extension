@@ -291,6 +291,140 @@ async function ensureLatestTerminalConfig(context: vscode.ExtensionContext): Pro
 }
 
 /**
+ * Setup smart status bar with menu-based user control
+ */
+async function setupSmartStatusBar(context: vscode.ExtensionContext): Promise<void> {
+    let statusBarItem: vscode.StatusBarItem | undefined;
+    const config = getColorfulCarbonConfig();
+    const showStatusBar = config.get('showStatusBar', true);
+    const isDismissed = context.globalState.get('statusBarDismissed', false);
+
+    // Reset dismiss state if user re-enabled in settings
+    if (showStatusBar && isDismissed) {
+        await context.globalState.update('statusBarDismissed', false);
+    }
+
+    async function updateStatusBar() {
+        const currentShowStatusBar = getColorfulCarbonConfig().get('showStatusBar', true);
+        const currentDismissed = context.globalState.get('statusBarDismissed', false);
+
+        if (!currentShowStatusBar || currentDismissed) {
+            // Clean up status bar if setting disabled or dismissed
+            if (statusBarItem) {
+                statusBarItem.hide();
+                statusBarItem.dispose();
+                statusBarItem = undefined;
+            }
+            return;
+        }
+
+        try {
+            const missingDeps = await checkMissingDependencies();
+
+            if (missingDeps.length > 0) {
+                if (!statusBarItem) {
+                    statusBarItem = vscode.window.createStatusBarItem(
+                        vscode.StatusBarAlignment.Right, 100
+                    );
+                    statusBarItem.command = 'colorful-carbon.statusBarMenu';
+                    context.subscriptions.push(statusBarItem);
+                }
+                statusBarItem.text = `⚠️ Colorful Carbon (${missingDeps.length} missing)`;
+                statusBarItem.show();
+            } else {
+                if (statusBarItem) {
+                    statusBarItem.hide();
+                    statusBarItem.dispose();
+                    statusBarItem = undefined;
+                }
+            }
+        } catch (error) {
+            console.error('[Colorful Carbon] Error checking dependencies:', error);
+            // Hide status bar on error to avoid showing stale data
+            if (statusBarItem) {
+                statusBarItem.hide();
+            }
+        }
+    }
+
+    // Initial update
+    await updateStatusBar();
+
+    // Light polling every 5 minutes (detects manual installations)
+    if (showStatusBar && !isDismissed) {
+        const pollInterval = setInterval(async () => {
+            await updateStatusBar();
+        }, 300000); // 5 minutes
+
+        context.subscriptions.push({ dispose: () => clearInterval(pollInterval) });
+    }
+
+    // Listen for configuration changes to respond immediately
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(async (e) => {
+            if (e.affectsConfiguration('colorfulCarbon.showStatusBar')) {
+                await updateStatusBar();
+            }
+        })
+    );
+
+    // Register status bar menu command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('colorful-carbon.statusBarMenu', async () => {
+            try {
+                const missingDeps = await checkMissingDependencies();
+                const options = [
+                    {
+                        label: '$(rocket) Install Missing Tools',
+                        detail: 'Automatically install and configure everything',
+                        action: 'install'
+                    },
+                    {
+                        label: '$(info) View Detailed Status',
+                        detail: 'See what\'s installed and what\'s missing',
+                        action: 'status'
+                    },
+                    {
+                        label: '$(eye-closed) Dismiss Status Bar',
+                        detail: 'Hide this reminder (you can re-enable in settings)',
+                        action: 'dismiss'
+                    }
+                ];
+
+                const choice = await vscode.window.showQuickPick(options, {
+                    title: `Colorful Carbon - ${missingDeps.length} tools needed`,
+                    placeHolder: `Missing: ${missingDeps.join(', ')}`
+                });
+
+                if (!choice) return;
+
+                switch (choice.action) {
+                    case 'install':
+                        await runCompleteSetup();
+                        await updateStatusBar();
+                        break;
+                    case 'status':
+                        await showSetupStatus();
+                        break;
+                    case 'dismiss':
+                        await context.globalState.update('statusBarDismissed', true);
+                        if (statusBarItem) {
+                            statusBarItem.hide();
+                            statusBarItem.dispose();
+                            statusBarItem = undefined;
+                        }
+                        vscode.window.showInformationMessage('Status bar dismissed. You can re-enable it in settings.');
+                        break;
+                }
+            } catch (error) {
+                console.error('[Colorful Carbon] Error in status bar menu:', error);
+                vscode.window.showErrorMessage('Failed to check dependencies. Please try again.');
+            }
+        })
+    );
+}
+
+/**
  * Extension activation - initializes theme, git tracking, and UI components
  */
 export async function activate(context: vscode.ExtensionContext) {
@@ -307,6 +441,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Show welcome message if needed
     await handleWelcomeMessage(context, config);
+
+    // Setup smart status bar with user control
+    await setupSmartStatusBar(context);
 
     // Register all commands
     registerCommands(context);
