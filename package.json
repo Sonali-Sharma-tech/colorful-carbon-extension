@@ -58,24 +58,8 @@
         "title": "Colorful Carbon: Apply Complete Makeover"
       },
       {
-        "command": "colorful-carbon.installTerminalDependencies",
-        "title": "Colorful Carbon: Install Terminal Dependencies"
-      },
-      {
-        "command": "colorful-carbon.applyTerminalConfig",
-        "title": "Colorful Carbon: Apply Terminal Configuration"
-      },
-      {
         "command": "colorful-carbon.showSetupStatus",
         "title": "Colorful Carbon: Show Setup Status"
-      },
-      {
-        "command": "colorful-carbon.removeTerminalConfig",
-        "title": "Colorful Carbon: Remove Terminal Configuration"
-      },
-      {
-        "command": "colorful-carbon.testExtension",
-        "title": "Colorful Carbon: Test Extension (Debug)"
       }
     ],
     "configuration": {

@@ -3,7 +3,6 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
-import { isManualSwitch } from './theme-switcher';
 
 // Constants
 const THEME_NAMES = {
@@ -111,27 +110,10 @@ async function handleWelcomeMessage(
 function registerCommands(context: vscode.ExtensionContext): void {
     const commands = [
         vscode.commands.registerCommand('colorful-carbon.applyCompleteSetup', runCompleteSetup),
-        vscode.commands.registerCommand('colorful-carbon.installTerminalDependencies', installTerminalDependencies),
-        vscode.commands.registerCommand('colorful-carbon.applyTerminalConfig', applyTerminalConfiguration),
-        vscode.commands.registerCommand('colorful-carbon.showSetupStatus', showSetupStatus),
-        vscode.commands.registerCommand('colorful-carbon.removeTerminalConfig', removeTerminalConfiguration),
-        vscode.commands.registerCommand('colorful-carbon.testExtension', testExtension)
+        vscode.commands.registerCommand('colorful-carbon.showSetupStatus', showSetupStatus)
     ];
 
     context.subscriptions.push(...commands);
-}
-
-/**
- * Debug test command - shows extension status
- */
-async function testExtension(): Promise<void> {
-    const config = getColorfulCarbonConfig();
-    const currentTheme = getCurrentThemeName();
-    const missingDeps = await checkMissingDependencies();
-
-    const message = `Colorful Carbon Test Results: Extension Active: ✓ | Current Theme: ${currentTheme} | Auto Apply Terminal: ${config.get('autoApplyTerminalTheme')} | Show Welcome: ${config.get('showWelcomeMessage')} | Missing Dependencies: ${missingDeps.length === 0 ? 'None' : missingDeps.join(', ')}`;
-
-    vscode.window.showInformationMessage(message);
 }
 
 /**
@@ -142,11 +124,6 @@ function setupThemeChangeListener(context: vscode.ExtensionContext): void {
 
     context.subscriptions.push(
         vscode.window.onDidChangeActiveColorTheme(async () => {
-            // Skip if manual theme switch is in progress to prevent double execution
-            if (isManualSwitch()) {
-                return;
-            }
-
             // Small delay to ensure config is fully written
             await new Promise(resolve => setTimeout(resolve, DELAYS.THEME_CONFIG_WRITE));
 
@@ -188,38 +165,6 @@ function reloadAllTerminals(): void {
 }
 
 
-/**
- * Setup status bar with periodic updates
- */
-function setupStatusBar(context: vscode.ExtensionContext): void {
-    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    updateStatusBar(statusBarItem);
-    statusBarItem.show();
-    context.subscriptions.push(statusBarItem);
-
-    // Update status bar periodically (every 30 seconds)
-    const statusInterval = setInterval(() => updateStatusBar(statusBarItem), 30000);
-    context.subscriptions.push({ dispose: () => clearInterval(statusInterval) });
-}
-
-/**
- * Update status bar text based on missing dependencies
- */
-async function updateStatusBar(statusBarItem: vscode.StatusBarItem): Promise<void> {
-    const missingDeps = await checkMissingDependencies();
-
-    if (missingDeps.length === 0) {
-        statusBarItem.text = "$(check) Colorful Carbon";
-        statusBarItem.tooltip = "All components installed";
-        statusBarItem.backgroundColor = undefined;
-    } else {
-        statusBarItem.text = `$(warning) Colorful Carbon (${missingDeps.length} missing)`;
-        statusBarItem.tooltip = `Missing: ${missingDeps.join(', ')}\nClick to install`;
-        statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
-    }
-
-    statusBarItem.command = 'colorful-carbon.showSetupStatus';
-}
 
 /**
  * Install smart fetch feature to user's .zshrc
@@ -365,9 +310,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Register all commands
     registerCommands(context);
-
-    // Setup status bar
-    setupStatusBar(context);
 }
 
 /**
@@ -629,7 +571,7 @@ ${getZshrcContent()}
 function writeStarshipConfig(): void {
     const currentTheme = getCurrentThemeName();
     const themeType = getThemeType(currentTheme || THEME_NAMES.DEFAULT);
-    const starshipContent = themeType === 'dark-night' ? getDarkNightStarshipContent() : getStarshipContent();
+    const starshipContent = getStarshipContent(themeType);
 
     fs.writeFileSync(getHomeFilePath(FILE_PATHS.STARSHIP_CONFIG), starshipContent);
     fs.writeFileSync(getHomeFilePath(FILE_PATHS.THEME_MARKER), themeType);
@@ -960,32 +902,58 @@ alias glog='git log --oneline -10'
  */
 async function updateStarshipConfig(themeName: string): Promise<void> {
     const themeType = getThemeType(themeName);
-    const starshipContent = themeType === 'dark-night' ? getDarkNightStarshipContent() : getStarshipContent();
+    const starshipContent = getStarshipContent(themeType);
 
     const starshipPath = getHomeFilePath(FILE_PATHS.STARSHIP_CONFIG);
     const markerPath = getHomeFilePath(FILE_PATHS.THEME_MARKER);
 
-    // Write and sync starship config
+    // Write both files
     fs.writeFileSync(starshipPath, starshipContent);
-    const starshipFd = fs.openSync(starshipPath, 'r');
-    fs.fsyncSync(starshipFd);
-    fs.closeSync(starshipFd);
-
-    // Write and sync theme marker
     fs.writeFileSync(markerPath, themeType);
-    const markerFd = fs.openSync(markerPath, 'r');
-    fs.fsyncSync(markerFd);
-    fs.closeSync(markerFd);
+
+    // Only sync starship config before terminal reload (marker doesn't need sync)
+    const fd = fs.openSync(starshipPath, 'r');
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
 
     // Update git command colors to match theme
     await setupGitColorsForTheme(themeType);
 }
 
 /**
- * Get default Starship theme configuration content
+ * Get Starship theme configuration content for the specified theme type
  */
-function getStarshipContent(): string {
-    return `# Custom Color-Coded Starship Theme
+function getStarshipContent(themeType: 'default' | 'dark-night'): string {
+    // Theme-specific colors
+    const colors = themeType === 'dark-night' ? {
+        themeName: 'Dark Night',
+        username: 'fg:#6BCB77',
+        hostname: 'fg:#6BCB77',
+        directory: 'fg:#4ECDC4',
+        gitBranch: 'fg:#FFD93D',
+        gitUpstream: 'fg:#C792EA',
+        gitConflict: 'fg:#FF6B6B',
+        nodejs: 'fg:#6BCB77',
+        python: 'fg:#FFD93D',
+        characterSuccess: 'fg:#4D96FF',
+        characterError: 'fg:#FF6B6B',
+        time: 'fg:#9CA3AF'
+    } : {
+        themeName: '',
+        username: 'cyan',
+        hostname: 'cyan',
+        directory: 'blue',
+        gitBranch: 'fg:205',
+        gitUpstream: 'fg:150',
+        gitConflict: 'red',
+        nodejs: 'green',
+        python: 'yellow',
+        characterSuccess: 'green',
+        characterError: 'red',
+        time: 'fg:241'
+    };
+
+    return `# Custom Color-Coded Starship Theme${colors.themeName ? ' - ' + colors.themeName : ''}
 
 format = """
 $username\\
@@ -1000,7 +968,7 @@ $line_break\\
 $character"""
 
 [username]
-style_user = "bold cyan"
+style_user = "bold ${colors.username}"
 style_root = "bold red"
 format = '[$user]($style)'
 disabled = false
@@ -1008,11 +976,11 @@ show_always = true
 
 [hostname]
 ssh_only = false
-format = '[@](white)[$hostname](bold cyan) '
+format = '[@](white)[$hostname](bold ${colors.hostname}) '
 disabled = false
 
 [directory]
-style = "bold blue"  # Blue for project/directory name
+style = "bold ${colors.directory}"
 format = "[$path]($style) "
 truncation_length = 3
 truncation_symbol = "…/"
@@ -1022,12 +990,12 @@ read_only_style = "bold red"
 
 [git_branch]
 symbol = "🎋 "
-style = "bold fg:205"
-format = 'on [$symbol$branch](bold fg:205) '
+style = "bold ${colors.gitBranch}"
+format = 'on [$symbol$branch](bold ${colors.gitBranch}) '
 
 [git_status]
 format = '([$all_status]($style)) '
-conflicted = "[⚠️ conflicts](bold red) "
+conflicted = "[⚠️ conflicts](bold ${colors.gitConflict}) "
 ahead = ""
 behind = ""
 diverged = ""
@@ -1056,8 +1024,8 @@ up_behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0)
 # Show upstream with its status
 printf "%s" "-> $upstream "
 if [ "$up_ahead" -gt 0 ] || [ "$up_behind" -gt 0 ]; then
-  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆ $up_ahead"
-  [ "$up_behind" -gt 0 ] && printf "%s" "⬇ $up_behind"
+  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆$up_ahead"
+  [ "$up_behind" -gt 0 ] && printf "%s" "⬇$up_behind"
   printf "%s" " "
 else
   # Only claim "synced" if fetch cache is fresh (<5min)
@@ -1099,8 +1067,8 @@ if [ -n "$current" ]; then
       # Always show when there's a mismatch
       printf "%s" "| $remote_branch "
       if [ "$ahead" -gt 0 ] || [ "$behind" -gt 0 ]; then
-        [ "$ahead" -gt 0 ] && printf "%s" "⬆ $ahead"
-        [ "$behind" -gt 0 ] && printf "%s" "⬇ $behind"
+        [ "$ahead" -gt 0 ] && printf "%s" "⬆$ahead"
+        [ "$behind" -gt 0 ] && printf "%s" "⬇$behind"
       else
         printf "%s" "(#synced)"
       fi
@@ -1111,232 +1079,34 @@ fi
 '''
 when = "git rev-parse --git-dir 2>/dev/null"
 shell = ["sh"]
-style = "bold fg:150"
+style = "bold ${colors.gitUpstream}"
 format = "[$output]($style)"
 
 [nodejs]
 symbol = " "
-style = "bold green"
+style = "bold ${colors.nodejs}"
 format = 'via [$symbol($version)]($style) '
 
 [python]
 symbol = "🐍 "
-style = "bold yellow"
+style = "bold ${colors.python}"
 format = 'via [$symbol($version)(\\($virtualenv\\))]($style) '
 
 [character]
-success_symbol = '[❯](bold green)'  # Green for successful command
-error_symbol = '[✖](bold red)'  # Red for failed command
-vimcmd_symbol = '[❮](bold green)'
+success_symbol = '[❯](bold ${colors.characterSuccess})'
+error_symbol = '[✖](bold ${colors.characterError})'
+vimcmd_symbol = '[❮](bold ${colors.characterSuccess})'
 
 [line_break]
 disabled = false
 
 [time]
 disabled = false
-format = ' [$time](bold fg:241)'  # Gray color for time at the end
+format = ' [$time](bold ${colors.time})'
 time_format = '%d %b %Y %H:%M'  # Format: 8 Nov 2024 22:45
 utc_time_offset = 'local'
 `;
 }
 
-/**
- * Get Dark Night Starship theme configuration content
- */
-function getDarkNightStarshipContent(): string {
-    return `# Custom Color-Coded Starship Theme - Dark Night
-
-format = """
-$username\\
-$hostname\\
-$directory\\
-$git_branch\\
-\${custom.git_upstream}\\
-$git_status\\
-$cmd_duration\\
-$time\\
-$line_break\\
-$character"""
-
-[username]
-style_user = "bold fg:#6BCB77"  # Fresh Green
-style_root = "bold red"
-format = '[$user]($style)'
-disabled = false
-show_always = true
-
-[hostname]
-ssh_only = false
-format = '[@](white)[$hostname](bold fg:#6BCB77) '
-disabled = false
-
-[directory]
-style = "bold fg:#4ECDC4"  # Turquoise for project/directory name
-format = "[$path]($style) "
-truncation_length = 3
-truncation_symbol = "…/"
-home_symbol = "~"
-read_only = " 🔒"
-read_only_style = "bold red"
-
-[git_branch]
-symbol = "🎋 "
-style = "bold fg:#FFD93D"
-format = 'on [$symbol$branch](bold fg:#FFD93D) '
-
-[git_status]
-format = '([$all_status]($style)) '
-conflicted = "[⚠️ conflicts](bold fg:#FF6B6B) "
-ahead = ""
-behind = ""
-diverged = ""
-untracked = ""
-stashed = ""
-modified = ""
-staged = ""
-renamed = ""
-deleted = ""
-up_to_date = ""
-
-# Custom module to show git upstream branch with mismatch detection
-[custom.git_upstream]
-command = '''
-current=$(git branch --show-current 2>/dev/null)
-upstream=$(git rev-parse --abbrev-ref @{upstream} 2>/dev/null)
-
-if [ -z "$upstream" ]; then
-  exit 0
-fi
-
-# Calculate ahead/behind for tracked upstream
-up_ahead=$(git rev-list --count @{upstream}..HEAD 2>/dev/null || echo 0)
-up_behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0)
-
-# Show upstream with its status
-printf "%s" "-> $upstream "
-if [ "$up_ahead" -gt 0 ] || [ "$up_behind" -gt 0 ]; then
-  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆ $up_ahead"
-  [ "$up_behind" -gt 0 ] && printf "%s" "⬇ $up_behind"
-  printf "%s" " "
-else
-  # Only claim "synced" if fetch cache is fresh (<5min)
-  repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
-  if [ -n "$repo_root" ]; then
-    hash=""
-    if command -v shasum >/dev/null 2>&1; then
-      hash=$(printf "%s" "$repo_root" | shasum -a 256 2>/dev/null | cut -d' ' -f1)
-    elif command -v sha256sum >/dev/null 2>&1; then
-      hash=$(printf "%s" "$repo_root" | sha256sum 2>/dev/null | cut -d' ' -f1)
-    else
-      hash=$(printf "%s" "$repo_root" | sed 's/\\//_/g')
-    fi
-
-    cache_file="$HOME/.git-fetch-cache/$hash"
-    last_fetch=0
-    [ -f "$cache_file" ] && last_fetch=$(cat "$cache_file" 2>/dev/null || echo 0)
-    now=$(date +%s)
-    age=$((now - last_fetch))
-
-    if [ $age -lt 900 ]; then
-      printf "%s" "(#synced) "
-    fi
-  fi
-fi
-
-# Check if origin/<current> exists and is different from upstream
-if [ -n "$current" ]; then
-  remote_branch="origin/$current"
-
-  # Check if remote branch exists
-  if git show-ref --verify --quiet "refs/remotes/$remote_branch" 2>/dev/null; then
-    # If tracking different branch, show origin/<current> status
-    if [ "$upstream" != "$remote_branch" ]; then
-      # Calculate ahead/behind for origin/<current>
-      ahead=$(git rev-list --count $remote_branch..HEAD 2>/dev/null || echo 0)
-      behind=$(git rev-list --count HEAD..$remote_branch 2>/dev/null || echo 0)
-
-      # Always show when there's a mismatch
-      printf "%s" "| $remote_branch "
-      if [ "$ahead" -gt 0 ] || [ "$behind" -gt 0 ]; then
-        [ "$ahead" -gt 0 ] && printf "%s" "⬆ $ahead"
-        [ "$behind" -gt 0 ] && printf "%s" "⬇ $behind"
-      else
-        printf "%s" "(#synced)"
-      fi
-      printf "%s" " "
-    fi
-  fi
-fi
-'''
-when = "git rev-parse --git-dir 2>/dev/null"
-shell = ["sh"]
-style = "bold fg:#C792EA"
-format = "[$output]($style)"
-
-[nodejs]
-symbol = " "
-style = "bold fg:#6BCB77"
-format = 'via [$symbol($version)]($style) '
-
-[python]
-symbol = "🐍 "
-style = "bold fg:#FFD93D"
-format = 'via [$symbol($version)(\\($virtualenv\\))]($style) '
-
-[character]
-success_symbol = '[❯](bold fg:#4D96FF)'  # Bright Blue for successful command
-error_symbol = '[✖](bold fg:#FF6B6B)'  # Coral Red for failed command
-vimcmd_symbol = '[❮](bold fg:#4D96FF)'
-
-[line_break]
-disabled = false
-
-[time]
-disabled = false
-format = ' [$time](bold fg:#9CA3AF)'  # Soft Gray color for time at the end
-time_format = '%d %b %Y %H:%M'  # Format: 8 Nov 2024 22:45
-utc_time_offset = 'local'
-`;
-}
-
-/**
- * Remove Colorful Carbon terminal configurations
- */
-async function removeTerminalConfiguration(): Promise<void> {
-    const confirm = await vscode.window.showWarningMessage(
-        'This will remove Colorful Carbon terminal configurations. Your original settings will be preserved. Continue?',
-        'Yes, Remove',
-        'Cancel'
-    );
-
-    if (confirm !== 'Yes, Remove') {
-        return;
-    }
-
-    // Remove our section from .zshrc
-    const zshrcPath = getHomeFilePath(FILE_PATHS.ZSHRC);
-    if (fs.existsSync(zshrcPath)) {
-        const content = fs.readFileSync(zshrcPath, 'utf8');
-        // Remove our configuration block
-        const updatedContent = content.replace(
-            /\n*# Colorful Carbon Configuration - START[\s\S]*?# Colorful Carbon Configuration - END\n*/g,
-            ''
-        );
-        fs.writeFileSync(zshrcPath, updatedContent);
-    }
-
-    // Remove starship.toml (only if it's ours)
-    const starshipPath = getHomeFilePath(FILE_PATHS.STARSHIP_CONFIG);
-    if (fs.existsSync(starshipPath)) {
-        const content = fs.readFileSync(starshipPath, 'utf8');
-        if (content.includes('Custom Color-Coded Starship Theme')) {
-            fs.unlinkSync(starshipPath);
-        }
-    }
-
-    vscode.window.showInformationMessage(
-        'Terminal configurations removed. Restart your terminal to see changes.'
-    );
-}
 
 export function deactivate() {}
