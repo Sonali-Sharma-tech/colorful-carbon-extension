@@ -60,6 +60,10 @@
       {
         "command": "colorful-carbon.showSetupStatus",
         "title": "Colorful Carbon: Show Setup Status"
+      },
+      {
+        "command": "colorful-carbon.removeTerminalConfiguration",
+        "title": "Colorful Carbon: Remove Terminal Configuration"
       }
     ],
     "configuration": {

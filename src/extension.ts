@@ -105,12 +105,123 @@ async function handleWelcomeMessage(
 }
 
 /**
+ * Remove terminal configuration with automatic backups
+ */
+async function removeTerminalConfiguration(): Promise<void> {
+    const filesToClean = [
+        '• Remove configuration from ~/.zshrc',
+        '• Delete ~/.config/starship.toml',
+        '• Remove ~/.colorful-carbon-theme',
+        '• Remove ~/.config/.colorful-carbon-installed',
+        '• Clean ~/.git-fetch-cache'
+    ];
+
+    const choice = await vscode.window.showWarningMessage(
+        'Remove Colorful Carbon terminal configuration?',
+        {
+            modal: true,
+            detail: filesToClean.join('\n') +
+                   '\n\nBackups will be created.\nYou can re-apply anytime.'
+        },
+        'Remove & Backup',
+        'Cancel'
+    );
+
+    if (choice !== 'Remove & Backup') return;
+
+    try {
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Removing Colorful Carbon Configuration",
+            cancellable: false
+        }, async (progress) => {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+            progress.report({ message: 'Backing up and cleaning .zshrc...' });
+            // Backup and clean .zshrc
+            const zshrcPath = getHomeFilePath(FILE_PATHS.ZSHRC);
+            if (fs.existsSync(zshrcPath)) {
+                const content = fs.readFileSync(zshrcPath, 'utf8');
+                const backupPath = `${zshrcPath}.backup-${timestamp}`;
+                fs.writeFileSync(backupPath, content);
+
+                // Verify backup was created successfully before proceeding
+                if (!fs.existsSync(backupPath)) {
+                    throw new Error('Failed to create .zshrc backup');
+                }
+
+                // Remove Colorful Carbon section (handles all edge cases: start, middle, end of file)
+                const cleaned = content.replace(
+                    /(?:\n{1,2})?# Colorful Carbon Configuration - START[\s\S]*?# Colorful Carbon Configuration - END\n?/g,
+                    ''
+                );
+                fs.writeFileSync(zshrcPath, cleaned);
+            }
+
+            progress.report({ message: 'Removing starship configuration...' });
+            // Delete starship.toml (with backup)
+            const starshipPath = getHomeFilePath(FILE_PATHS.STARSHIP_CONFIG);
+            if (fs.existsSync(starshipPath)) {
+                const starshipBackupPath = `${starshipPath}.backup-${timestamp}`;
+                fs.copyFileSync(starshipPath, starshipBackupPath);
+
+                // Verify backup was created successfully before deleting original
+                if (!fs.existsSync(starshipBackupPath)) {
+                    throw new Error('Failed to create starship.toml backup');
+                }
+
+                fs.unlinkSync(starshipPath);
+            }
+
+            progress.report({ message: 'Removing marker files...' });
+            // Remove marker files (no backup needed for these small marker files)
+            const markerFiles = [
+                FILE_PATHS.THEME_MARKER,
+                FILE_PATHS.INSTALL_MARKER
+            ];
+            markerFiles.forEach(file => {
+                const filePath = getHomeFilePath(file);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
+            });
+
+            progress.report({ message: 'Removing cache directory...' });
+            // Remove cache directory (Node.js 14.14.0+ compatible)
+            const cacheDir = path.join(os.homedir(), '.git-fetch-cache');
+            if (fs.existsSync(cacheDir)) {
+                // Use rmSync if available (Node 14.14+), otherwise use rmdirSync with recursive
+                if (typeof fs.rmSync === 'function') {
+                    fs.rmSync(cacheDir, { recursive: true, force: true });
+                } else {
+                    // Fallback for older Node versions
+                    fs.rmdirSync(cacheDir, { recursive: true });
+                }
+            }
+        });
+
+        const selection = await vscode.window.showInformationMessage(
+            '✅ Configuration removed! Backups saved.\nRestart terminal to see changes.',
+            'View Backups'
+        );
+
+        if (selection === 'View Backups') {
+            vscode.env.openExternal(vscode.Uri.file(os.homedir()));
+        }
+    } catch (error) {
+        console.error('[Colorful Carbon] Error removing configuration:', error);
+        vscode.window.showErrorMessage(`Failed to remove configuration: ${error}`);
+    }
+}
+
+/**
  * Register all extension commands
  */
 function registerCommands(context: vscode.ExtensionContext): void {
     const commands = [
         vscode.commands.registerCommand('colorful-carbon.applyCompleteSetup', runCompleteSetup),
-        vscode.commands.registerCommand('colorful-carbon.showSetupStatus', showSetupStatus)
+        vscode.commands.registerCommand('colorful-carbon.showSetupStatus', showSetupStatus),
+        vscode.commands.registerCommand('colorful-carbon.removeTerminalConfiguration', removeTerminalConfiguration)
     ];
 
     context.subscriptions.push(...commands);
@@ -820,10 +931,20 @@ async function showSetupStatus(): Promise<void> {
         items.push(`✓ ${config}: ${exists ? '✅ Configured' : '❌ Not configured'}`);
     });
 
-    await vscode.window.showQuickPick(items, {
+    // Add cleanup option at the bottom
+    items.push('');
+    items.push('────────────────────');
+    items.push('🗑️  Remove Terminal Configuration');
+
+    const selection = await vscode.window.showQuickPick(items, {
         title: 'Colorful Carbon Setup Status',
-        canPickMany: true
+        placeHolder: 'View status or select an action'
     });
+
+    // Handle cleanup action
+    if (selection === '🗑️  Remove Terminal Configuration') {
+        await removeTerminalConfiguration();
+    }
 }
 
 /**
