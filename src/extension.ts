@@ -233,10 +233,14 @@ function registerCommands(context: vscode.ExtensionContext): void {
 function setupThemeChangeListener(context: vscode.ExtensionContext): void {
     let lastAppliedTheme: string | undefined;
 
+    // Use onDidChangeConfiguration instead of onDidChangeActiveColorTheme
+    // This ensures config is ALREADY written when we read it
     context.subscriptions.push(
-        vscode.window.onDidChangeActiveColorTheme(async () => {
-            // Small delay to ensure config is fully written
-            await new Promise(resolve => setTimeout(resolve, DELAYS.THEME_CONFIG_WRITE));
+        vscode.workspace.onDidChangeConfiguration(async (e) => {
+            // Only respond to theme changes
+            if (!e.affectsConfiguration('workbench.colorTheme')) {
+                return;
+            }
 
             const themeName = getCurrentThemeName();
 
