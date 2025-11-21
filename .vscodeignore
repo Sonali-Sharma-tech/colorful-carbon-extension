@@ -13,6 +13,8 @@ out/test/**
 
 # Development documentation (not needed in published extension)
 docs/**
+release-plan.md
+.claude/**
 
 # Keep user-facing documentation
 !README.md
