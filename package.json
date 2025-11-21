@@ -1,8 +1,8 @@
 {
   "name": "colorful-carbon",
   "displayName": "Colorful Carbon - Complete VS Code Makeover",
-  "description": "Transform your VS Code with a beautiful dark theme and matching terminal colors. Includes automated terminal setup with syntax highlighting!",
-  "version": "1.0.0",
+  "description": "Transform your VS Code with beautiful dark themes (including Dark Night variant) and matching terminal colors. Features automated terminal setup, Smart Git Fetch, theme switching, and syntax highlighting!",
+  "version": "2.0.0",
   "publisher": "Sonali-Sharma",
   "engines": {
     "vscode": "^1.74.0"
@@ -45,11 +45,6 @@
         "label": "Colorful Carbon Dark Night",
         "uiTheme": "vs-dark",
         "path": "./themes/colorful-carbon-dark-night.json"
-      },
-      {
-        "label": "Colorful Carbon Starry Night",
-        "uiTheme": "vs-dark",
-        "path": "./themes/colorful-carbon-starry-night.json"
       }
     ],
     "commands": [
