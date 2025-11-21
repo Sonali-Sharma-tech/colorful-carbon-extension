@@ -3,11 +3,11 @@
 ## Critical Question
 **Default theme (115 properties) works fine for users. Do we need to add 66 properties to it?**
 
-**Answer: NO! We should REMOVE ~50 bloat properties from dark-night instead.**
+**Answer: NO! We should REMOVE ~50 bloat properties from dark-knight instead.**
 
 ---
 
-## The 66 Extra Properties in Dark Night
+## The 66 Extra Properties in Dark Knight
 
 ### Category 1: Claude Code Integration (6 properties)
 ```
@@ -21,11 +21,11 @@ interactive.responseForeground
 
 **Analysis:**
 - ✅ **KEEP**: These fix Claude Code extension UI
-- 🎯 **Purpose**: Make Claude chat match dark-night theme colors
+- 🎯 **Purpose**: Make Claude chat match dark-knight theme colors
 - 👤 **Impact**: Only users with Claude Code extension benefit
 - 📊 **Default theme**: Doesn't need them (VS Code defaults work fine)
 
-**Verdict**: Keep in dark-night, don't add to default
+**Verdict**: Keep in dark-knight, don't add to default
 
 ---
 
@@ -42,7 +42,7 @@ sideBarSectionHeader.foreground
 - 👤 **Impact**: Visual consistency in sidebar
 - 📊 **Default theme**: Works fine without (uses VS Code defaults)
 
-**Verdict**: Keep in dark-night, don't add to default
+**Verdict**: Keep in dark-knight, don't add to default
 
 ---
 
@@ -97,7 +97,7 @@ editorGutter.modifiedBackground
 - 👤 **Impact**: Visible git status in editor margin
 - 📊 **Default theme**: VS Code has defaults
 
-**Verdict**: Keep in dark-night (better git integration)
+**Verdict**: Keep in dark-knight (better git integration)
 
 ---
 
@@ -115,7 +115,7 @@ widget.shadow
 
 **Analysis:**
 - ⚠️ **PARTIALLY NEEDED**
-- 🎯 **Purpose**: Match widget colors to dark-night theme
+- 🎯 **Purpose**: Match widget colors to dark-knight theme
 - 👤 **Impact**: Autocomplete, hover tooltips
 - 📊 **Default theme**: Works fine with VS Code defaults
 
@@ -313,9 +313,9 @@ toolbar.hoverBackground
 
 ## Summary: What to Keep vs Remove
 
-### KEEP in Dark Night (36 properties)
+### KEEP in Dark Knight (36 properties)
 
-**Essential for dark-night theme:**
+**Essential for dark-knight theme:**
 - Claude integration (6) ✅
 - Sidebar headers (3) ✅
 - List focus (3) ✅
@@ -331,7 +331,7 @@ toolbar.hoverBackground
 - Panel titles (2) ✅
 - Filter match (2) ✅
 
-### REMOVE from Dark Night (30 properties)
+### REMOVE from Dark Knight (30 properties)
 
 **Bloat to delete:**
 - List properties (6) ❌
@@ -348,14 +348,14 @@ toolbar.hoverBackground
 
 ### Before Cleanup:
 - Default theme: 115 properties ✅ (works great)
-- Dark Night theme: 181 properties ⚠️ (bloated)
+- Dark Knight theme: 181 properties ⚠️ (bloated)
 - Difference: 66 properties
 
 ### After Cleanup:
 - Default theme: 115 properties ✅ (unchanged)
-- Dark Night theme: ~151 properties ✅ (optimized)
+- Dark Knight theme: ~151 properties ✅ (optimized)
 - Difference: 36 essential properties
-- **Savings**: 30 properties removed from dark-night
+- **Savings**: 30 properties removed from dark-knight
 
 ---
 
@@ -363,9 +363,9 @@ toolbar.hoverBackground
 
 ### ✅ DO THIS:
 1. **Keep default theme unchanged** (115 properties)
-2. **Remove 30 bloat properties from dark-night** (181 → 151)
-3. **Delete 16-line comment block** from dark-night
-4. **Test dark-night still looks correct**
+2. **Remove 30 bloat properties from dark-knight** (181 → 151)
+3. **Delete 16-line comment block** from dark-knight
+4. **Test dark-knight still looks correct**
 
 ### ❌ DON'T DO THIS:
 1. ~~Add 66 properties to default theme~~ (would break working theme)
@@ -375,9 +375,9 @@ toolbar.hoverBackground
 
 ## Files to Update
 
-### Only change dark-night theme:
+### Only change dark-knight theme:
 ```
-themes/colorful-carbon-dark-night.json
+themes/colorful-carbon-dark-knight.json
 - Remove comment block (16 lines)
 - Remove 30 bloat properties
 - Final size: ~151 properties, ~450 lines (from 476)
@@ -395,10 +395,10 @@ themes/colorful-carbon-starry-night.json ✅
 
 **Risk Level**: LOW
 - Default theme: No changes (zero risk)
-- Dark Night: Removing unused properties (low risk)
+- Dark Knight: Removing unused properties (low risk)
 - VS Code: Will use defaults for removed properties (safe)
 
-**Testing**: Switch to dark-night theme and verify:
+**Testing**: Switch to dark-knight theme and verify:
 - Claude chat still styled correctly ✓
 - Sidebar headers still dark blue-gray ✓
 - Command palette selection visible ✓
@@ -413,6 +413,6 @@ themes/colorful-carbon-starry-night.json ✅
 
 Users are happy with default theme (115 properties). We should:
 - **NOT add 66 properties to default** ❌
-- **REMOVE 30 bloat properties from dark-night** ✅
+- **REMOVE 30 bloat properties from dark-knight** ✅
 
-This keeps default theme stable while cleaning up dark-night's over-engineering.
+This keeps default theme stable while cleaning up dark-knight's over-engineering.

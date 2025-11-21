@@ -5,11 +5,11 @@ All notable changes to the "Colorful Carbon" extension will be documented in thi
 ## [2.0.0] - 2024-11-21
 
 ### Added
-- 🎨 **Dark Night Theme**: New softer color variant with green/yellow/purple palette
+- 🎨 **Dark Knight Theme**: New softer color variant with green/yellow/purple palette
 - 🚀 **Smart Git Fetch**: Background git fetching with 15-minute intelligent caching
 - 🔄 **Automatic Theme Switching**: Terminal colors update when you switch themes
 - 📊 **Git Upstream Tracking**: See ahead/behind counts and branch mismatches in prompt
-- 🎯 **Theme-Aware Git Colors**: Branch colors match your selected theme (magenta for Default, yellow for Dark Night)
+- 🎯 **Theme-Aware Git Colors**: Branch colors match your selected theme (magenta for Default, yellow for Dark Knight)
 - ✨ **Auto-Reload Terminals**: Terminals automatically reload when theme changes
 - 🧹 **Cleanup Command**: One-click removal of terminal configuration with automatic backups
 - 📊 **Smart Status Bar**: Menu-based status bar with dismiss option and 5-minute polling

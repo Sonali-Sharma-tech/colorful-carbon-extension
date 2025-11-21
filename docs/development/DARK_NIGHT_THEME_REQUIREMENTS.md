@@ -1,4 +1,4 @@
-# Dark Night Theme - Requirements & Specifications
+# Dark Knight Theme - Requirements & Specifications
 
 ## Theme Philosophy
 Create a cohesive, minimalist dark theme with subtle borders and consistent use of dark charcoal (`#1e1e1e`) as the primary border/accent color, while maintaining vibrant syntax highlighting and terminal prompt colors.
@@ -146,7 +146,7 @@ Create a cohesive, minimalist dark theme with subtle borders and consistent use 
 
 ## Implementation Notes
 
-**File to Update**: `themes/colorful-carbon-dark-night.json`
+**File to Update**: `themes/colorful-carbon-dark-knight.json`
 
 **Systematic Approach**:
 1. Create backup of current theme
@@ -252,11 +252,11 @@ Create a cohesive, minimalist dark theme with subtle borders and consistent use 
 
 ## Git Tracking Issue - SOLVED ✅
 
-**Problem**: The `dark-night` branch tracks `origin/main` instead of `origin/dark-night`
+**Problem**: The `dark-knight` branch tracks `origin/main` instead of `origin/dark-knight`
 
 **Why it happens**: When creating a branch from `main`, git automatically sets it to track the same upstream.
 
-**Impact**: Starship prompt shows "ahead 1 commit" when actually synced with origin/dark-night
+**Impact**: Starship prompt shows "ahead 1 commit" when actually synced with origin/dark-knight
 
 **Solution Implemented - Automatic Detection & Fix**:
 - ✅ **Automatic Fix**: Extension now automatically fixes git tracking mismatches on activation
@@ -270,8 +270,8 @@ Create a cohesive, minimalist dark theme with subtle borders and consistent use 
 2. **On Terminal Creation**: Checks when user opens a new terminal (catches branch changes)
 3. **Auto-Fix Logic**:
    - Detects when local branch name doesn't match configured upstream
-   - Verifies remote branch with same name exists (e.g., `origin/dark-night`)
-   - Automatically runs: `git branch --set-upstream-to=origin/dark-night`
+   - Verifies remote branch with same name exists (e.g., `origin/dark-knight`)
+   - Automatically runs: `git branch --set-upstream-to=origin/dark-knight`
    - Shows status bar message: "$(check) Git tracking fixed" for 3 seconds
 4. **Fallback to Notification**: If auto-fix can't determine correct action, shows notification with options
 
@@ -300,7 +300,7 @@ Applied 10x engineering principles to refactor `extension.ts`:
 - `getColorfulCarbonConfig()` - Centralized config access
 - `getCurrentThemeName()` - Get current VS Code theme
 - `isColorfulCarbonTheme()` - Check if theme is Colorful Carbon variant
-- `getThemeType()` - Get theme type (dark-night or default)
+- `getThemeType()` - Get theme type (dark-knight or default)
 - `getHomeFilePath()` - Get absolute paths in home directory
 
 **Refactored Initialization**:

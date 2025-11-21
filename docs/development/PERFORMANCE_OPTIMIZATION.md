@@ -75,14 +75,14 @@ function getStarshipContent(): string {
 }
 
 function getDarkNightStarshipContent(): string {
-    return `... 133 lines of TOML for dark-night ...`;
+    return `... 133 lines of TOML for dark-knight ...`;
 }
 ```
 
 **After**:
 ```typescript
-function getStarshipContent(themeType: 'default' | 'dark-night'): string {
-    const colors = themeType === 'dark-night' ? {
+function getStarshipContent(themeType: 'default' | 'dark-knight'): string {
+    const colors = themeType === 'dark-knight' ? {
         username: '#6BCB77',
         hostname: '#6BCB77',
         directory: '#4ECDC4',
@@ -120,7 +120,7 @@ style = "bold ${colors.gitUpstream}"
 
 **Steps**:
 1. Create new consolidated function
-2. Update all callers: `getStarshipContent('dark-night')` or `getStarshipContent('default')`
+2. Update all callers: `getStarshipContent('dark-knight')` or `getStarshipContent('default')`
 3. Delete old `getDarkNightStarshipContent()` function
 
 **Impact**:

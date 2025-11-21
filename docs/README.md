@@ -24,7 +24,7 @@ Technical documentation for understanding and reusing core components:
 
 Internal documentation for maintaining and optimizing the extension:
 
-- **[Dark Night Theme Requirements](./development/DARK_NIGHT_THEME_REQUIREMENTS.md)**
+- **[Dark Knight Theme Requirements](./development/DARK_NIGHT_THEME_REQUIREMENTS.md)**
   - Theme philosophy and color palette
   - Requirements and implementation checklist
   - Version history and completed features
@@ -42,7 +42,7 @@ Internal documentation for maintaining and optimizing the extension:
   - Recommended action plan
 
 - **[Theme Property Analysis](./development/THEME_PROPERTY_ANALYSIS.md)**
-  - Analysis of 66 extra properties in dark-night theme
+  - Analysis of 66 extra properties in dark-knight theme
   - What to keep vs remove
   - Impact assessment
 

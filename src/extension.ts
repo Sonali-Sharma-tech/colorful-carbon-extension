@@ -7,7 +7,7 @@ import { execSync } from 'child_process';
 // Constants
 const THEME_NAMES = {
     DEFAULT: 'Colorful Carbon',
-    DARK_NIGHT: 'Colorful Carbon Dark Night'
+    DARK_KNIGHT: 'Colorful Carbon Dark Knight'
 } as const;
 
 const DELAYS = {
@@ -37,12 +37,12 @@ function getCurrentThemeName(): string | undefined {
 
 // Helper: Check if theme is a Colorful Carbon theme
 function isColorfulCarbonTheme(themeName: string | undefined): boolean {
-    return themeName === THEME_NAMES.DEFAULT || themeName === THEME_NAMES.DARK_NIGHT;
+    return themeName === THEME_NAMES.DEFAULT || themeName === THEME_NAMES.DARK_KNIGHT;
 }
 
 // Helper: Get theme type from theme name
-function getThemeType(themeName: string): 'dark-night' | 'default' {
-    return themeName === THEME_NAMES.DARK_NIGHT ? 'dark-night' : 'default';
+function getThemeType(themeName: string): 'dark-knight' | 'default' {
+    return themeName === THEME_NAMES.DARK_KNIGHT ? 'dark-knight' : 'default';
 }
 
 // Helper: Get absolute file path in home directory
@@ -832,10 +832,10 @@ function writeStarshipConfig(): void {
 /**
  * Setup Git color configuration based on theme
  */
-async function setupGitColorsForTheme(themeType: 'default' | 'dark-night'): Promise<void> {
+async function setupGitColorsForTheme(themeType: 'default' | 'dark-knight'): Promise<void> {
     // Theme-specific colors
-    const branchColor = themeType === 'dark-night' ? 'yellow bold' : 'magenta bold';
-    const addedChangesColor = themeType === 'dark-night' ? 'magenta bold' : 'green';
+    const branchColor = themeType === 'dark-knight' ? 'yellow bold' : 'magenta bold';
+    const addedChangesColor = themeType === 'dark-knight' ? 'magenta bold' : 'green';
 
     const gitCommands = [
         ['color.ui', 'auto'],
@@ -856,7 +856,7 @@ async function setupGitColorsForTheme(themeType: 'default' | 'dark-night'): Prom
         ['color.branch.current', branchColor],
         ['color.branch.local', branchColor],
         ['color.branch.remote', branchColor],
-        ['color.decorate.branch', themeType === 'dark-night' ? 'yellow' : 'magenta']
+        ['color.decorate.branch', themeType === 'dark-knight' ? 'yellow' : 'magenta']
     ];
 
     let failedCommands = 0;
@@ -904,7 +904,7 @@ async function showSetupStatus(): Promise<void> {
 
     // Check theme
     const currentTheme = getCurrentThemeName();
-    items.push(`✓ Theme: ${currentTheme === THEME_NAMES.DEFAULT || currentTheme === THEME_NAMES.DARK_NIGHT ? '✅ Applied' : '❌ Not applied'}`);
+    items.push(`✓ Theme: ${currentTheme === THEME_NAMES.DEFAULT || currentTheme === THEME_NAMES.DARK_KNIGHT ? '✅ Applied' : '❌ Not applied'}`);
 
     // Check commands in PATH
     const commands = ['starship', 'fzf'];
@@ -1139,8 +1139,8 @@ git() {
     # Only colorize if it's a command that shows branches
     if [[ "$1" == "status" || "$1" == "st" || "$1" == "checkout" || "$1" == "branch" || "$1" == "log" || "$1" == "merge" || "$1" == "rebase" || "$1" == "cherry-pick" || "$1" == "switch" ]]; then
         # Apply theme-based coloring to branch names
-        if [[ "$CURRENT_CC_THEME" == "dark-night" ]]; then
-            # Yellow for dark-night theme
+        if [[ "$CURRENT_CC_THEME" == "dark-knight" ]]; then
+            # Yellow for dark-knight theme
             echo "$output" | sed -E "s/(On branch |Switched to branch |Your branch is [^']*'|Merge branch '|Rebase branch ')([^'[:space:]]+)/\\1$(printf '\\033[33;1m')\\2$(printf '\\033[0m')/g"
         else
             # Magenta for default theme
@@ -1185,10 +1185,10 @@ async function updateStarshipConfig(themeName: string): Promise<void> {
 /**
  * Get Starship theme configuration content for the specified theme type
  */
-function getStarshipContent(themeType: 'default' | 'dark-night'): string {
+function getStarshipContent(themeType: 'default' | 'dark-knight'): string {
     // Theme-specific colors
-    const colors = themeType === 'dark-night' ? {
-        themeName: 'Dark Night',
+    const colors = themeType === 'dark-knight' ? {
+        themeName: 'Dark Knight',
         username: 'fg:#6BCB77',
         hostname: 'fg:#6BCB77',
         directory: 'fg:#4ECDC4',

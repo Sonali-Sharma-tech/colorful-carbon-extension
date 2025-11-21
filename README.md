@@ -6,7 +6,7 @@ Transform your entire VS Code experience with a beautiful dark theme and matchin
 
 ### 🎨 Beautiful Dark Themes
 - **Colorful Carbon**: Vibrant theme with pink/blue/green palette
-- **Dark Night**: Softer variant with green/yellow/purple palette
+- **Dark Knight**: Softer variant with green/yellow/purple palette
 - Carefully crafted color palettes inspired by Carbon design
 - Vibrant syntax highlighting for all major languages
 - Easy on the eyes for long coding sessions
@@ -37,7 +37,23 @@ When you run the complete makeover:
 
 ## 📸 Preview
 
-Experience a cohesive development environment where your editor and terminal work in perfect harmony.
+### 🎨 Theme Variants
+
+**Colorful Carbon (Default)**
+![Colorful Carbon Theme](images/theme-colorful-carbon.png)
+
+**Dark Knight**
+![Dark Knight Theme](images/theme-dark-knight.png)
+
+### 🖥️ Terminal Integration
+
+**Before & After**
+![Terminal Transformation](images/terminal-comparison.png)
+
+### ✨ Smart Features
+
+**Status Bar & Theme Switching**
+![Smart Features](images/features-demo.gif)
 
 ## 🚀 Quick Start
 

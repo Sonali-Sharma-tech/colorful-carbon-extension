@@ -66,7 +66,7 @@ style = "bold fg:205"
 }
 
 function getDarkNightStarshipContent(): string {
-    return `# Custom Color-Coded Starship Theme - Dark Night
+    return `# Custom Color-Coded Starship Theme - Dark Knight
 
 format = """..."""
 
@@ -82,8 +82,8 @@ style = "bold fg:#FFD93D"
 
 **AFTER** (130 lines):
 ```typescript
-function getStarshipContent(themeType: 'default' | 'dark-night'): string {
-    const colors = themeType === 'dark-night' ? {
+function getStarshipContent(themeType: 'default' | 'dark-knight'): string {
+    const colors = themeType === 'dark-knight' ? {
         username: '#6BCB77',
         gitBranch: '#FFD93D',
         // ... other colors
@@ -238,7 +238,7 @@ colorful-carbon-extension/
 │   └── theme-switcher.ts (252 lines - ❌ DELETE)
 └── themes/
     ├── colorful-carbon.json (✅ KEEP)
-    ├── colorful-carbon-dark-night.json (✅ KEEP)
+    ├── colorful-carbon-dark-knight.json (✅ KEEP)
     └── colorful-carbon-starry-night.json (✅ KEEP - for future)
 ```
 
@@ -251,7 +251,7 @@ colorful-carbon-extension/
 │   └── extension.ts (600-700 lines - OPTIMIZED)
 └── themes/
     ├── colorful-carbon.json
-    ├── colorful-carbon-dark-night.json
+    ├── colorful-carbon-dark-knight.json
     └── colorful-carbon-starry-night.json
 ```
 
