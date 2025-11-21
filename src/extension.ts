@@ -1024,8 +1024,8 @@ up_behind=$(git rev-list --count HEAD..@{upstream} 2>/dev/null || echo 0)
 # Show upstream with its status
 printf "%s" "-> $upstream "
 if [ "$up_ahead" -gt 0 ] || [ "$up_behind" -gt 0 ]; then
-  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆$up_ahead"
-  [ "$up_behind" -gt 0 ] && printf "%s" "⬇$up_behind"
+  [ "$up_ahead" -gt 0 ] && printf "%s" "⬆ $up_ahead"
+  [ "$up_behind" -gt 0 ] && printf "%s" "⬇ $up_behind"
   printf "%s" " "
 else
   # Only claim "synced" if fetch cache is fresh (<5min)
@@ -1067,8 +1067,8 @@ if [ -n "$current" ]; then
       # Always show when there's a mismatch
       printf "%s" "| $remote_branch "
       if [ "$ahead" -gt 0 ] || [ "$behind" -gt 0 ]; then
-        [ "$ahead" -gt 0 ] && printf "%s" "⬆$ahead"
-        [ "$behind" -gt 0 ] && printf "%s" "⬇$behind"
+        [ "$ahead" -gt 0 ] && printf "%s" "⬆ $ahead"
+        [ "$behind" -gt 0 ] && printf "%s" "⬇ $behind"
       else
         printf "%s" "(#synced)"
       fi
