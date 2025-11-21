@@ -4,15 +4,27 @@ Transform your entire VS Code experience with a beautiful dark theme and matchin
 
 ## ✨ Features
 
-### 🎨 Beautiful Dark Theme
-- Carefully crafted color palette inspired by Carbon design
+### 🎨 Beautiful Dark Themes
+- **Colorful Carbon**: Vibrant theme with pink/blue/green palette
+- **Dark Night**: Softer variant with green/yellow/purple palette
+- Carefully crafted color palettes inspired by Carbon design
 - Vibrant syntax highlighting for all major languages
 - Easy on the eyes for long coding sessions
+
+### 🔄 Smart Theme Switching
+- **Automatic Terminal Updates**: Terminal colors change when you switch themes
+- **Auto-Reload**: Terminals automatically refresh with new theme
+- **Theme-Aware Git Colors**: Git output matches your selected theme
+
+### 🚀 Smart Git Fetch
+- **Background Fetching**: Keeps your git status accurate
+- **15-Minute Cache**: Intelligent caching prevents excessive fetching
+- **Upstream Tracking**: See ahead/behind counts in your prompt
 
 ### 🖥️ Complete Terminal Transformation
 - **Automated Setup**: One-click installation of terminal enhancements
 - **Syntax Highlighting**: Commands appear in green as you type
-- **Smart Git Colors**: Branch names in pink, status in yellow
+- **Smart Git Colors**: Branch names change based on theme
 - **Beautiful Prompt**: Starship prompt with git integration
 
 ### 🚀 What Gets Installed
@@ -41,9 +53,8 @@ That's it! Your entire development environment is transformed! 🎉
 Access these commands from the Command Palette (Cmd/Ctrl+Shift+P):
 
 - **Colorful Carbon: Apply Complete Makeover** - Full automatic setup
-- **Colorful Carbon: Install Terminal Dependencies** - Install required tools
-- **Colorful Carbon: Apply Terminal Configuration** - Apply configs only
 - **Colorful Carbon: Show Setup Status** - Check what's installed
+- **Colorful Carbon: Remove Terminal Configuration** - Clean removal with automatic backups
 
 ## 🎨 Color Scheme
 
@@ -72,6 +83,7 @@ brew install starship zsh-autosuggestions zsh-syntax-highlighting fzf
 
 - `colorfulCarbon.autoApplyTerminalTheme`: Automatically apply terminal theme on activation (default: true)
 - `colorfulCarbon.showWelcomeMessage`: Show welcome message with setup instructions (default: true)
+- `colorfulCarbon.showStatusBar`: Show status bar when dependencies are missing (default: true)
 
 ## 🗑️ Uninstalling
 
@@ -83,7 +95,13 @@ Want to go back to your original setup? No problem!
 
 ### Remove Terminal Configurations
 
-**Option 1: Restore from Backup**
+**Option 1: Use the Cleanup Command (Easiest)**
+1. Run **"Colorful Carbon: Remove Terminal Configuration"** from Command Palette
+2. Confirm removal
+3. Automatic backups created before removal
+4. Restart your terminal
+
+**Option 2: Restore from Backup**
 ```bash
 # Find your backups (created automatically)
 ls ~/.zshrc.backup*
@@ -94,7 +112,7 @@ cp ~/.zshrc.backup-[timestamp] ~/.zshrc
 cp ~/.config/starship.toml.backup-[timestamp] ~/.config/starship.toml
 ```
 
-**Option 2: Remove Packages Only**
+**Option 3: Remove Packages Only**
 ```bash
 # Uninstall terminal enhancements (keeps zsh intact)
 brew uninstall starship zsh-autosuggestions zsh-syntax-highlighting fzf
@@ -102,7 +120,7 @@ brew uninstall starship zsh-autosuggestions zsh-syntax-highlighting fzf
 # Your zsh shell remains untouched!
 ```
 
-**Option 3: Manual Cleanup**
+**Option 4: Manual Cleanup**
 - Remove the custom git function from `~/.zshrc`
 - Delete `~/.config/starship.toml`
 - Keep all your other zsh configurations
