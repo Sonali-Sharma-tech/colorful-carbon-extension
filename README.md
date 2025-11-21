@@ -37,23 +37,27 @@ When you run the complete makeover:
 
 ## 📸 Preview
 
-### 🎨 Theme Variants
+### 🌙 Dark Knight Theme
 
-**Colorful Carbon (Default)**
-![Colorful Carbon Theme](images/theme-colorful-carbon.png)
+**Editor**
+![Dark Knight Editor](images/dark-knight-editor.png)
 
-**Dark Knight**
-![Dark Knight Theme](images/theme-dark-knight.png)
+**Terminal**
+![Dark Knight Terminal](images/dark-knight-terminal.png)
 
-### 🖥️ Terminal Integration
+**Claude Integration**
+![Dark Knight Claude](images/dark-knight-claude.png)
 
-**Before & After**
-![Terminal Transformation](images/terminal-comparison.png)
+### ☀️ Colorful Carbon (Default) Theme
 
-### ✨ Smart Features
+**Editor**
+![Colorful Carbon Editor](images/colorful-carbon-editor.png)
 
-**Status Bar & Theme Switching**
-![Smart Features](images/features-demo.gif)
+**Terminal**
+![Colorful Carbon Terminal](images/colorful-carbon-terminal.png)
+
+**Claude Integration**
+![Colorful Carbon Claude](images/colorful-carbon-claude.png)
 
 ## 🚀 Quick Start
 
