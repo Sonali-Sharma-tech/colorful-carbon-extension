@@ -268,15 +268,13 @@ function setupThemeChangeListener(context: vscode.ExtensionContext): void {
 
 /**
  * Reload all active terminals
+ * Note: We don't auto-reload existing terminals to avoid interrupting user's work.
+ * New terminals will automatically pick up the new theme from updated starship config.
  */
 function reloadAllTerminals(): void {
-    if (vscode.window.terminals.length > 0) {
-        vscode.window.terminals.forEach(terminal => {
-            // Use exec zsh to start fresh shell with new config
-            // Don't clear screen to preserve command history context
-            terminal.sendText('exec zsh', true);
-        });
-    }
+    // Don't reload existing terminals - respects user's ongoing work
+    // The starship config is already updated, so new terminals will use new theme
+    // Users can manually close/reopen terminals when they're ready
 }
 
 
@@ -570,14 +568,13 @@ export async function activate(context: vscode.ExtensionContext) {
 function applyTerminalSettings(): void {
     const config = vscode.workspace.getConfiguration();
 
-    // Apply terminal colors that match our theme
+    // Apply terminal settings (don't override user's theme choice!)
     const terminalSettings = {
         "terminal.integrated.fontFamily": "MesloLGS NF, SF Mono, Monaco, 'Courier New', monospace",
         "terminal.integrated.fontSize": 13,
         "terminal.integrated.lineHeight": 1.2,
         "terminal.integrated.cursorStyle": "line",
-        "terminal.integrated.cursorBlinking": true,
-        "workbench.colorTheme": "Colorful Carbon"
+        "terminal.integrated.cursorBlinking": true
     };
 
     Object.entries(terminalSettings).forEach(([key, value]) => {
