@@ -1,12 +1,12 @@
 # 🎨 Colorful Carbon - Complete VS Code Makeover
 
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/Sonali-Sharma.colorful-carbon?style=for-the-badge&logo=visual-studio-code&label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=Sonali-Sharma.colorful-carbon)
-[![VS Code Marketplace Downloads](https://img.shields.io/visual-studio-marketplace/d/Sonali-Sharma.colorful-carbon?style=for-the-badge)](https://marketplace.visualstudio.com/items?itemName=Sonali-Sharma.colorful-carbon)
-[![VS Code Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/Sonali-Sharma.colorful-carbon?style=for-the-badge)](https://marketplace.visualstudio.com/items?itemName=Sonali-Sharma.colorful-carbon)
-[![VS Code Marketplace Rating](https://img.shields.io/visual-studio-marketplace/r/Sonali-Sharma.colorful-carbon?style=for-the-badge)](https://marketplace.visualstudio.com/items?itemName=Sonali-Sharma.colorful-carbon)
+[![VS Code Marketplace Downloads](https://img.shields.io/visual-studio-marketplace/d/Sonali-Sharma.colorful-carbon?style=for-the-badge&color=2ea44f)](https://marketplace.visualstudio.com/items?itemName=Sonali-Sharma.colorful-carbon)
+[![VS Code Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/Sonali-Sharma.colorful-carbon?style=for-the-badge&color=2ea44f)](https://marketplace.visualstudio.com/items?itemName=Sonali-Sharma.colorful-carbon)
+[![VS Code Marketplace Rating](https://img.shields.io/visual-studio-marketplace/r/Sonali-Sharma.colorful-carbon?style=for-the-badge&color=ffdd00)](https://marketplace.visualstudio.com/items?itemName=Sonali-Sharma.colorful-carbon)
 
 [![Open VSX Version](https://img.shields.io/open-vsx/v/Sonali-Sharma/colorful-carbon?style=for-the-badge&logo=eclipse-ide&label=Open%20VSX)](https://open-vsx.org/extension/Sonali-Sharma/colorful-carbon)
-[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/Sonali-Sharma/colorful-carbon?style=for-the-badge)](https://open-vsx.org/extension/Sonali-Sharma/colorful-carbon)
+[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/Sonali-Sharma/colorful-carbon?style=for-the-badge&label=Open%20VSX%20Downloads&color=2ea44f)](https://open-vsx.org/extension/Sonali-Sharma/colorful-carbon)
 
 [![License](https://img.shields.io/github/license/Sonali-Sharma-tech/colorful-carbon-extension?style=for-the-badge)](LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/Sonali-Sharma-tech/colorful-carbon-extension?style=for-the-badge)](https://github.com/Sonali-Sharma-tech/colorful-carbon-extension/issues)

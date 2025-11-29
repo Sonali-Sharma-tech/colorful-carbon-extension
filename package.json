@@ -2,13 +2,14 @@
   "name": "colorful-carbon",
   "displayName": "Colorful Carbon - Complete VS Code Makeover",
   "description": "Transform your VS Code with beautiful dark themes (including Dark Knight variant) and matching terminal colors. Features automated terminal setup, Smart Git Fetch, theme switching, and syntax highlighting!",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "publisher": "Sonali-Sharma",
   "engines": {
     "vscode": "^1.74.0"
   },
   "categories": [
     "Themes",
+    "Programming Languages",
     "Other"
   ],
   "keywords": [
@@ -19,7 +20,15 @@
     "vscode makeover",
     "carbon",
     "syntax highlighting",
-    "custom theme"
+    "custom theme",
+    "color theme",
+    "terminal theme",
+    "starship",
+    "git theme",
+    "dark knight",
+    "beautiful theme",
+    "developer theme",
+    "coding theme"
   ],
   "icon": "icon.png",
   "galleryBanner": {
