@@ -1267,10 +1267,12 @@ renamed = ""
 deleted = ""
 up_to_date = ""
 
-# Custom module to show conflict status with the conflicting branch name
+# Custom module to show conflict status with branch names
+# Format: branch-A -> branch-C (⚠️ conflicts)
 [custom.git_conflict]
 command = '''
 git_dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0
+current=$(git branch --show-current 2>/dev/null)
 
 # Check if we're in a merge conflict
 if [ -f "$git_dir/MERGE_HEAD" ]; then
@@ -1281,8 +1283,10 @@ if [ -f "$git_dir/MERGE_HEAD" ]; then
       merge_branch=$(head -1 "$git_dir/MERGE_MSG" | sed -n "s/^Merge remote-tracking branch '\\([^']*\\)'.*/\\1/p")
     fi
   fi
-  if [ -n "$merge_branch" ]; then
-    printf "| ⚠️ conflicts with %s " "$merge_branch"
+  if [ -n "$merge_branch" ] && [ -n "$current" ]; then
+    printf "| %s -> %s (⚠️ conflicts) " "$current" "$merge_branch"
+  elif [ -n "$current" ]; then
+    printf "| %s (⚠️ merge conflicts) " "$current"
   else
     printf "| ⚠️ merge conflicts "
   fi
@@ -1291,12 +1295,13 @@ fi
 
 # Check if we're in a rebase conflict
 if [ -d "$git_dir/rebase-merge" ]; then
-  # Get the branch being rebased onto
   if [ -f "$git_dir/rebase-merge/onto" ]; then
     onto_commit=$(cat "$git_dir/rebase-merge/onto")
     onto_branch=$(git name-rev --name-only "$onto_commit" 2>/dev/null | sed 's/~.*//')
-    if [ -n "$onto_branch" ]; then
-      printf "| ⚠️ rebase conflicts with %s " "$onto_branch"
+    if [ -n "$onto_branch" ] && [ -n "$current" ]; then
+      printf "| %s -> %s (⚠️ rebase conflicts) " "$current" "$onto_branch"
+    elif [ -n "$current" ]; then
+      printf "| %s (⚠️ rebase conflicts) " "$current"
     else
       printf "| ⚠️ rebase conflicts "
     fi
@@ -1315,8 +1320,6 @@ when = 'git rev-parse --git-dir 2>/dev/null'
 shell = ["sh"]
 style = "bold ${colors.gitConflict}"
 format = "[$output]($style)"
-use_stdin = false
-ignore_timeout = true
 
 # Custom module to show git upstream branch with mismatch detection
 [custom.git_upstream]
@@ -1358,7 +1361,7 @@ else
     age=$((now - last_fetch))
 
     if [ $age -lt 900 ]; then
-      printf "%s" "(#synced) "
+      printf "%s" "(#synced)  "
     fi
   fi
 fi
@@ -1392,8 +1395,6 @@ when = "git rev-parse --git-dir 2>/dev/null"
 shell = ["sh"]
 style = "bold ${colors.gitUpstream}"
 format = "[$output]($style)"
-use_stdin = false
-ignore_timeout = true
 
 [nodejs]
 symbol = " "
