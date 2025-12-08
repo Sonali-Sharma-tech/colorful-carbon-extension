@@ -14,8 +14,6 @@
 
 Transform your entire VS Code experience with a beautiful dark theme and matching terminal colors! This extension doesn't just change your editor theme - it gives your entire development environment a complete makeover.
 
-> ⭐ **Like this theme?** [Star it on GitHub](https://github.com/Sonali-Sharma-tech/colorful-carbon-extension) to help others discover it!
-
 ## ✨ Features
 
 ### 🎨 Beautiful Dark Themes
@@ -168,6 +166,8 @@ brew uninstall starship zsh-autosuggestions zsh-syntax-highlighting fzf
 ## 🤝 Contributing
 
 Found a bug or have a suggestion? Please open an issue on [GitHub](https://github.com/Sonali-Sharma-tech/colorful-carbon-extension).
+
+If you enjoy this theme, don't forget to give the project a ⭐ star! Thanks!
 
 ## 📝 License
 
