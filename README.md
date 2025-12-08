@@ -12,6 +12,8 @@
 [![GitHub issues](https://img.shields.io/github/issues/Sonali-Sharma-tech/colorful-carbon-extension?style=for-the-badge)](https://github.com/Sonali-Sharma-tech/colorful-carbon-extension/issues)
 [![GitHub stars](https://img.shields.io/github/stars/Sonali-Sharma-tech/colorful-carbon-extension?style=for-the-badge)](https://github.com/Sonali-Sharma-tech/colorful-carbon-extension/stargazers)
 
+> **⭐ Love this theme? [Give it a star on GitHub](https://github.com/Sonali-Sharma-tech/colorful-carbon-extension) to help others find it!**
+
 Transform your entire VS Code experience with a beautiful dark theme and matching terminal colors! This extension doesn't just change your editor theme - it gives your entire development environment a complete makeover.
 
 ## ✨ Features
