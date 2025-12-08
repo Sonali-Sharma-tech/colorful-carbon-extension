@@ -2,6 +2,24 @@
 
 All notable changes to the "Colorful Carbon" extension will be documented in this file.
 
+## [2.0.4] - 2024-12-08
+
+### Added
+- Added "Support" section to README with GitHub star link
+- One-time notification prompting users to star on GitHub (new users: after 2 days, existing users: on first reload)
+
+### Changed
+- Removed docs folder (documentation consolidated in README)
+
+## [2.0.3] - 2024-11-30
+
+### Fixed
+- Fixed Starship custom modules compatibility (removed invalid options)
+- Improved conflict branch display in terminal prompt
+
+### Changed
+- Updated spacing between status indicators in prompt
+
 ## [2.0.0] - 2024-11-21
 
 ### Added

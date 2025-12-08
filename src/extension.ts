@@ -78,28 +78,76 @@ async function handleWelcomeMessage(
     const setupDismissed = context.globalState.get('colorfulCarbon.setupDismissed', false);
     const showWelcome = config.get('showWelcomeMessage', true);
 
-    if (!showWelcome) {
-        return;
-    }
-
-    if (isFirstActivation) {
-        // Mark as not first activation anymore
-        await context.globalState.update('colorfulCarbon.firstActivation', false);
-        // Delay slightly to ensure theme is applied first
-        setTimeout(() => {
-            showWelcomeMessage(context).catch(error => {
-                console.error('[Colorful Carbon] Error showing welcome message:', error);
-            });
-        }, DELAYS.WELCOME_MESSAGE);
-    } else if (!setupDismissed) {
-        // Check if there are still missing dependencies
-        const missingDeps = await checkMissingDependencies();
-        if (missingDeps.length > 0) {
+    // Welcome message logic (respects showWelcome setting)
+    if (showWelcome) {
+        if (isFirstActivation) {
+            // Mark as not first activation anymore
+            await context.globalState.update('colorfulCarbon.firstActivation', false);
+            // Delay slightly to ensure theme is applied first
             setTimeout(() => {
                 showWelcomeMessage(context).catch(error => {
-                    console.error('[Colorful Carbon] Error showing setup reminder:', error);
+                    console.error('[Colorful Carbon] Error showing welcome message:', error);
                 });
-            }, DELAYS.SETUP_REMINDER);
+            }, DELAYS.WELCOME_MESSAGE);
+        } else if (!setupDismissed) {
+            // Check if there are still missing dependencies
+            const missingDeps = await checkMissingDependencies();
+            if (missingDeps.length > 0) {
+                setTimeout(() => {
+                    showWelcomeMessage(context).catch(error => {
+                        console.error('[Colorful Carbon] Error showing setup reminder:', error);
+                    });
+                }, DELAYS.SETUP_REMINDER);
+            }
+        }
+    }
+
+    // GitHub star prompt - runs independently of showWelcome setting
+    const hasSeenStarPrompt = context.globalState.get('colorfulCarbon.starPromptShown', false);
+
+    if (!hasSeenStarPrompt) {
+        let shouldShowPrompt = false;
+        const installDate = context.globalState.get<number>('colorfulCarbon.installDate');
+
+        if (!installDate) {
+            // First time seeing this user in v2.0.4 - record install date
+            await context.globalState.update('colorfulCarbon.installDate', Date.now());
+
+            if (!isFirstActivation) {
+                // Existing user upgrading to v2.0.4 - show prompt on first reload
+                shouldShowPrompt = true;
+            }
+            // New user installing v2.0.4 fresh - don't show yet (wait 2 days)
+        } else {
+            // User already has install date - check if 2 days passed
+            const daysSinceInstall = (Date.now() - installDate) / (1000 * 60 * 60 * 24);
+            if (daysSinceInstall >= 2) {
+                shouldShowPrompt = true;
+            }
+        }
+
+        if (shouldShowPrompt) {
+            // Delay to not interfere with other messages
+            setTimeout(async () => {
+                try {
+                    const choice = await vscode.window.showInformationMessage(
+                        'Enjoying Colorful Carbon? Star it on GitHub to help others discover it!',
+                        'Star on GitHub',
+                        'Maybe Later'
+                    );
+                    if (choice === 'Star on GitHub') {
+                        vscode.env.openExternal(vscode.Uri.parse('https://github.com/Sonali-Sharma-tech/colorful-carbon-extension'));
+                    }
+                } catch (error: unknown) {
+                    // Ignore "Canceled" errors (user dismissed the notification)
+                    if (error instanceof Error && error.name !== 'Canceled') {
+                        console.error('[Colorful Carbon] Error showing star prompt:', error);
+                    }
+                } finally {
+                    // Mark as shown regardless of choice or dismissal
+                    await context.globalState.update('colorfulCarbon.starPromptShown', true);
+                }
+            }, DELAYS.SETUP_REMINDER + 1000);
         }
     }
 }
